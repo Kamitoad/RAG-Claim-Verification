@@ -1,0 +1,39 @@
+experiment_name: schumacher_claim_verification_example
+claims_file: ../data/ground_truth/claims.example.jsonl
+output_directory: ../runs
+
+prompts:
+  version: verification-v1
+  system_path: ../prompts/verification_system.txt
+  user_path: ../prompts/verification_user.txt
+
+model_configs:
+  default_llm:
+    provider: openai_compatible
+    base_url: ${RAGCV_LLM_BASE_URL:-https://api.openai.com/v1}
+    api_key_env: RAGCV_LLM_API_KEY
+    api_key_required: true
+    model: ${RAGCV_LLM_MODEL:-gpt-4o-mini}
+    temperature: 0.0
+    timeout_seconds: 60
+    max_retries: 2
+    request_json_object: true
+
+conditions:
+  - id: llm_baseline
+    mode: baseline
+    model_config: default_llm
+
+  - id: clean_rag
+    mode: rag
+    corpus_config: clean_corpus.yaml
+    model_config: default_llm
+    top_k: 5
+
+  - id: noisy_rag
+    mode: rag
+    corpus_config: noisy_corpus.yaml
+    model_config: default_llm
+    top_k: 5
+
+enforce_comparability: true

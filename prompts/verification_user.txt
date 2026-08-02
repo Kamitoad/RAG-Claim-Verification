@@ -1,0 +1,10 @@
+Verification mode: {{verification_mode}}
+Allowed labels: {{allowed_labels}}
+
+Claim:
+{{claim}}
+
+Evidence:
+{{evidence}}
+
+Assess every material part of the claim. Return only the required JSON object.
