@@ -6,6 +6,7 @@ prompts:
   version: verification-v1
   system_path: ../prompts/verification_system.txt
   user_path: ../prompts/verification_user.txt
+  repair_path: ../prompts/verification_repair.txt
 
 model_configs:
   default_llm:

@@ -8,6 +8,7 @@ import httpx
 
 from rag_claim_verification.config import OpenAICompatibleConfig
 from rag_claim_verification.errors import ProviderError
+from rag_claim_verification.llm.base import GenerationResult
 
 LOGGER = logging.getLogger(__name__)
 RETRYABLE_STATUS_CODES = {408, 409, 429}
@@ -32,7 +33,7 @@ class OpenAICompatibleClient:
             transport=transport,
         )
 
-    async def generate(self, *, system_prompt: str, user_prompt: str) -> str:
+    async def generate(self, *, system_prompt: str, user_prompt: str) -> GenerationResult:
         """Generate text with bounded retries for transient transport/provider failures."""
 
         payload: dict[str, Any] = {
@@ -46,6 +47,8 @@ class OpenAICompatibleClient:
         }
         if self._config.request_json_object:
             payload["response_format"] = {"type": "json_object"}
+        if self._config.seed is not None:
+            payload["seed"] = self._config.seed
 
         last_error: Exception | None = None
         for attempt in range(self._config.max_retries + 1):
@@ -60,7 +63,7 @@ class OpenAICompatibleClient:
                     raise ProviderError(
                         f"Provider returned HTTP status {response.status_code}: {body}"
                     )
-                return self._extract_content(response)
+                return self._extract_result(response, attempt_count=attempt + 1)
             except (httpx.TransportError, ProviderError) as exc:
                 last_error = exc
                 if attempt >= self._config.max_retries or (
@@ -76,8 +79,7 @@ class OpenAICompatibleClient:
                 await asyncio.sleep(delay)
         raise ProviderError(f"Model request failed: {last_error}") from last_error
 
-    @staticmethod
-    def _extract_content(response: httpx.Response) -> str:
+    def _extract_result(self, response: httpx.Response, *, attempt_count: int) -> GenerationResult:
         try:
             payload = response.json()
             content = payload["choices"][0]["message"]["content"]
@@ -85,7 +87,29 @@ class OpenAICompatibleClient:
             raise ProviderError("Provider response does not match chat-completions schema") from exc
         if not isinstance(content, str) or not content.strip():
             raise ProviderError("Provider returned an empty assistant message")
-        return content
+        usage = payload.get("usage")
+        usage_mapping = usage if isinstance(usage, dict) else {}
+
+        def optional_string(key: str) -> str | None:
+            value = payload.get(key)
+            return value if isinstance(value, str) and value else None
+
+        def optional_token_count(key: str) -> int | None:
+            value = usage_mapping.get(key)
+            return value if isinstance(value, int) and value >= 0 else None
+
+        return GenerationResult(
+            content=content,
+            provider="openai_compatible",
+            requested_model=self._config.model,
+            response_model=optional_string("model"),
+            response_id=optional_string("id"),
+            system_fingerprint=optional_string("system_fingerprint"),
+            prompt_tokens=optional_token_count("prompt_tokens"),
+            completion_tokens=optional_token_count("completion_tokens"),
+            total_tokens=optional_token_count("total_tokens"),
+            attempt_count=attempt_count,
+        )
 
     async def close(self) -> None:
         """Close the underlying HTTP connection pool."""

@@ -218,7 +218,9 @@ def verify_command(
                         and all(item.document_id is not None for item in evidence)
                     ),
                 )
-                return prediction.model_dump(mode="json")
+                return prediction.model_copy(
+                    update={"latency_ms": round((time.perf_counter() - started) * 1000)}
+                ).model_dump(mode="json")
             finally:
                 await retriever.close()
                 await client.close()

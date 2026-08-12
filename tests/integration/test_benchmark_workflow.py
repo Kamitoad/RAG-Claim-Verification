@@ -11,19 +11,21 @@ from rag_claim_verification.config import (
     OpenAICompatibleConfig,
     load_benchmark_config,
 )
+from rag_claim_verification.errors import ConfigurationError
 from rag_claim_verification.evaluation.benchmark import (
     BenchmarkRunner,
     DefaultComponentFactory,
 )
 from rag_claim_verification.evaluation.evaluate import evaluate_run
-from rag_claim_verification.llm.base import LLMClient
+from rag_claim_verification.llm.base import GenerationResult, LLMClient
 from rag_claim_verification.retrieval.base import Retriever
+from rag_claim_verification.utils.hashing import sha256_file
 
 
 class DeterministicVerificationClient:
     """Return labels from fixture-specific claim text, never from an external service."""
 
-    async def generate(self, *, system_prompt: str, user_prompt: str) -> str:
+    async def generate(self, *, system_prompt: str, user_prompt: str) -> GenerationResult:
         del system_prompt
         claim_text = user_prompt.split("Claim:\n", 1)[1].split("\n\nEvidence:", 1)[0]
         citation = ""
@@ -41,9 +43,18 @@ class DeterministicVerificationClient:
         if "BASELINE_WITHOUT_RETRIEVAL" in user_prompt:
             citation = ""
         citations = f'["{citation}"]' if citation else "[]"
-        return (
-            f'{{"label":"{label}","reason":"Deterministic fixture decision.",'
-            f'"cited_document_ids":{citations}}}'
+        return GenerationResult(
+            content=(
+                f'{{"label":"{label}","reason":"Deterministic fixture decision.",'
+                f'"cited_document_ids":{citations}}}'
+            ),
+            provider="offline_test",
+            requested_model="fake",
+            response_model="fake-v1",
+            system_fingerprint="offline-fixture-v1",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
         )
 
     async def close(self) -> None:
@@ -62,6 +73,20 @@ class OfflineFactory:
 
     def create_retriever(self, config: CorpusConfig) -> Retriever:
         return self._default.create_retriever(config)
+
+
+class CloseFailingClient(DeterministicVerificationClient):
+    async def close(self) -> None:
+        raise RuntimeError("synthetic close failure")
+
+
+class CloseFailingFactory:
+    def create_llm(self, config: OpenAICompatibleConfig) -> LLMClient:
+        del config
+        return CloseFailingClient()
+
+    def create_retriever(self, config: CorpusConfig) -> Retriever:
+        raise AssertionError(f"Unexpected retriever request for {config.corpus_id}")
 
 
 def _write_corpus_config(path: Path, corpus_id: str, manifest: Path) -> None:
@@ -105,6 +130,7 @@ async def test_complete_offline_benchmark_and_reevaluation(
                     "version": "test-v1",
                     "system_path": str(project_root / "prompts/verification_system.txt"),
                     "user_path": str(project_root / "prompts/verification_user.txt"),
+                    "repair_path": str(project_root / "prompts/verification_repair.txt"),
                 },
                 "model_configs": {
                     "model": {
@@ -148,6 +174,7 @@ async def test_complete_offline_benchmark_and_reevaluation(
     expected = {
         "metadata.json",
         "resolved_config.yaml",
+        "case_manifest.jsonl",
         "predictions.jsonl",
         "metrics.json",
         "metrics.csv",
@@ -159,6 +186,14 @@ async def test_complete_offline_benchmark_and_reevaluation(
     metadata = json.loads((run_directory / "metadata.json").read_text(encoding="utf-8"))
     assert metadata["successful_prediction_count"] == 15
     assert metadata["failed_prediction_count"] == 0
+    assert metadata["expected_prediction_count"] == 15
+    assert metadata["missing_prediction_count"] == 0
+    assert metadata["schema_version"] == "2.0"
+    assert (run_directory / "inputs/claims.jsonl").is_file()
+    assert (run_directory / "inputs/hashes.json").is_file()
+    assert sha256_file(run_directory / "inputs/claims.jsonl") == sha256_file(
+        project_root / "data/ground_truth/claims.example.jsonl"
+    )
     first_metrics = (run_directory / "metrics.json").read_text(encoding="utf-8")
 
     metrics = evaluate_run(run_directory)
@@ -167,4 +202,74 @@ async def test_complete_offline_benchmark_and_reevaluation(
     assert all(
         payload["classification"]["accuracy"] == 1.0 for payload in metrics["conditions"].values()
     )
+    assert metrics["completeness"]["complete"] is True
     assert (run_directory / "metrics.json").read_text(encoding="utf-8") == first_metrics
+
+    predictions_path = run_directory / "predictions.jsonl"
+    predictions_path.write_text(
+        predictions_path.read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigurationError, match=r"predictions\.jsonl hash"):
+        evaluate_run(run_directory)
+
+
+@pytest.mark.asyncio
+async def test_failed_run_persists_one_explicit_result_for_every_planned_case(
+    tmp_path: Path, project_root: Path
+) -> None:
+    benchmark_path = tmp_path / "benchmark.yaml"
+    benchmark_path.write_text(
+        yaml.safe_dump(
+            {
+                "experiment_name": "checkpoint_integration",
+                "claims_file": str(project_root / "data/ground_truth/claims.example.jsonl"),
+                "output_directory": str(tmp_path / "runs"),
+                "prompts": {
+                    "version": "test-v1",
+                    "system_path": str(project_root / "prompts/verification_system.txt"),
+                    "user_path": str(project_root / "prompts/verification_user.txt"),
+                    "repair_path": str(project_root / "prompts/verification_repair.txt"),
+                },
+                "model_configs": {
+                    "model": {
+                        "base_url": "http://localhost:1234/v1",
+                        "api_key_required": False,
+                        "model": "fake",
+                        "temperature": 0.0,
+                        "max_retries": 0,
+                    }
+                },
+                "conditions": [
+                    {"id": "first", "mode": "baseline", "model_config": "model"},
+                    {"id": "second", "mode": "baseline", "model_config": "model"},
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    config = load_benchmark_config(benchmark_path)
+
+    with pytest.raises(RuntimeError, match="synthetic close failure"):
+        await BenchmarkRunner(
+            config=config,
+            config_path=benchmark_path,
+            component_factory=CloseFailingFactory(),
+        ).run()
+
+    run_directory = next((tmp_path / "runs").iterdir())
+    predictions = [
+        json.loads(line)
+        for line in (run_directory / "predictions.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    metadata = json.loads((run_directory / "metadata.json").read_text(encoding="utf-8"))
+    assert len(predictions) == 10
+    assert sum(item["case_status"] == "success" for item in predictions) == 5
+    assert sum(item["case_status"] == "pipeline_error" for item in predictions) == 5
+    assert metadata["status"] == "failed"
+    assert metadata["missing_prediction_count"] == 0
+    assert metadata["run_error_type"] == "RuntimeError"
+    metrics = evaluate_run(run_directory)
+    assert metrics["completeness"]["complete"] is True
+    assert metrics["conditions"]["second"]["technical_errors"]["count"] == 5

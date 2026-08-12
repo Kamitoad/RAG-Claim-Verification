@@ -16,6 +16,11 @@ REQUIRED_USER_PLACEHOLDERS = {
     "{{verification_mode}}",
     "{{allowed_labels}}",
 }
+REQUIRED_REPAIR_PLACEHOLDERS = {
+    "{{original_user_prompt}}",
+    "{{invalid_output}}",
+    "{{validation_error}}",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,8 +38,10 @@ class PromptBuilder:
         self.version = config.version
         self._system_path = config.system_path
         self._user_path = config.user_path
+        self._repair_path = config.repair_path
         self._system = self._load_non_empty(config.system_path)
         self._user_template = self._load_non_empty(config.user_path)
+        self._repair_template = self._load_non_empty(config.repair_path)
         missing = sorted(
             placeholder
             for placeholder in REQUIRED_USER_PLACEHOLDERS
@@ -42,9 +49,19 @@ class PromptBuilder:
         )
         if missing:
             raise ValueError("User prompt is missing placeholders: " + ", ".join(missing))
-        self.prompt_hash = combine_hashes(
-            sha256_file(self._system_path), sha256_file(self._user_path)
+        missing_repair = sorted(
+            placeholder
+            for placeholder in REQUIRED_REPAIR_PLACEHOLDERS
+            if placeholder not in self._repair_template
         )
+        if missing_repair:
+            raise ValueError("Repair prompt is missing placeholders: " + ", ".join(missing_repair))
+        self.prompt_hashes = {
+            "system": sha256_file(self._system_path),
+            "user": sha256_file(self._user_path),
+            "repair": sha256_file(self._repair_path),
+        }
+        self.prompt_hash = combine_hashes(*self.prompt_hashes.values())
 
     @staticmethod
     def _load_non_empty(path: Path) -> str:
@@ -91,3 +108,18 @@ class PromptBuilder:
         for placeholder, value in replacements.items():
             user = user.replace(placeholder, value)
         return RenderedPrompt(system=self._system, user=user)
+
+    def build_repair(
+        self, *, original_user_prompt: str, invalid_output: str, validation_error: str
+    ) -> str:
+        """Render the versioned, hash-covered structured-output repair request."""
+
+        value = self._repair_template
+        replacements = {
+            "{{original_user_prompt}}": original_user_prompt,
+            "{{invalid_output}}": invalid_output,
+            "{{validation_error}}": validation_error,
+        }
+        for placeholder, replacement in replacements.items():
+            value = value.replace(placeholder, replacement)
+        return value

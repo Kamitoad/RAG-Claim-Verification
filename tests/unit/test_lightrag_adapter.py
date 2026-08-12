@@ -10,6 +10,7 @@ from rag_claim_verification.config import (
     OpenAICompatibleConfig,
     RetrieverConfig,
 )
+from rag_claim_verification.errors import ExternalDependencyError
 from rag_claim_verification.ingestion.loader import LoadedDocument
 from rag_claim_verification.models.document import Document
 from rag_claim_verification.retrieval.lightrag_adapter import LightRAGAdapter
@@ -37,6 +38,15 @@ class FakeLightRAG:
                 ]
             },
         }
+
+    async def finalize_storages(self) -> None:
+        return None
+
+
+class FailedLightRAG:
+    async def aquery_data(self, query: str, *, param: FakeQueryParam) -> dict[str, Any]:
+        del query, param
+        return {"status": "failure", "message": "fixture retrieval failure"}
 
     async def finalize_storages(self) -> None:
         return None
@@ -81,3 +91,29 @@ async def test_adapter_maps_public_chunk_path_without_inventing_score(tmp_path: 
     assert evidence[0].document_id == "doc_1994"
     assert evidence[0].retrieval_score is None
     assert evidence[0].chunk_id == "chunk-1"
+
+
+@pytest.mark.asyncio
+async def test_adapter_preserves_lightrag_failure_as_technical_error(tmp_path: Path) -> None:
+    settings = RetrieverConfig(
+        type="lightrag",
+        working_directory=tmp_path / "index",
+        lightrag_llm=OpenAICompatibleConfig(
+            base_url="http://localhost:1234/v1",
+            api_key_required=False,
+            model="fake",
+        ),
+        embedding=EmbeddingConfig(
+            base_url="http://localhost:1234/v1",
+            api_key_required=False,
+            model="fake-embedding",
+            dimension=3,
+        ),
+    )
+    adapter = LightRAGAdapter(settings, [])
+    adapter._rag = FailedLightRAG()
+    adapter._query_param_type = FakeQueryParam
+
+    with pytest.raises(ExternalDependencyError, match="fixture retrieval failure"):
+        await adapter.retrieve("claim", top_k=1)
+    await adapter.close()

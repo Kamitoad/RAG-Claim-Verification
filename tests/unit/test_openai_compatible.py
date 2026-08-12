@@ -17,7 +17,13 @@ async def test_openai_compatible_client_sends_deterministic_settings() -> None:
         captured.update(json.loads(request.content))
         return httpx.Response(
             200,
-            json={"choices": [{"message": {"content": '{"label":"SUPPORTED"}'}}]},
+            json={
+                "id": "response-1",
+                "model": "local-model-revision",
+                "system_fingerprint": "fingerprint-1",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 4, "total_tokens": 14},
+                "choices": [{"message": {"content": '{"label":"SUPPORTED"}'}}],
+            },
         )
 
     client = OpenAICompatibleClient(
@@ -26,6 +32,7 @@ async def test_openai_compatible_client_sends_deterministic_settings() -> None:
             api_key_required=False,
             model="local-model",
             temperature=0.0,
+            seed=17,
             max_retries=0,
         ),
         transport=httpx.MockTransport(handler),
@@ -35,6 +42,11 @@ async def test_openai_compatible_client_sends_deterministic_settings() -> None:
     finally:
         await client.close()
 
-    assert result == '{"label":"SUPPORTED"}'
+    assert result.content == '{"label":"SUPPORTED"}'
+    assert result.requested_model == "local-model"
+    assert result.response_model == "local-model-revision"
+    assert result.system_fingerprint == "fingerprint-1"
+    assert result.total_tokens == 14
     assert captured["temperature"] == 0.0
+    assert captured["seed"] == 17
     assert captured["response_format"] == {"type": "json_object"}

@@ -1,0 +1,6 @@
+{{original_user_prompt}}
+
+The previous response was invalid. Repair only its JSON structure or schema. Do not add facts, change the evidence, or cite new documents. Return exactly one JSON object with keys label, reason, and cited_document_ids.
+Validation error: {{validation_error}}
+Invalid response:
+{{invalid_output}}

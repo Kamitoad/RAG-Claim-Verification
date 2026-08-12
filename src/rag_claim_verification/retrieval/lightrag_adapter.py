@@ -195,7 +195,8 @@ class LightRAGAdapter:
         if not isinstance(raw, dict):
             raise ExternalDependencyError("LightRAG aquery_data returned a non-object response")
         if raw.get("status") == "failure":
-            return []
+            message = raw.get("message") or raw.get("error") or "unspecified failure"
+            raise ExternalDependencyError(f"LightRAG retrieval failed: {message}")
         data = raw.get("data", {})
         chunks = data.get("chunks", []) if isinstance(data, dict) else None
         if not isinstance(chunks, list):

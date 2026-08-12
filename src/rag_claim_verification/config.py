@@ -55,6 +55,7 @@ class OpenAICompatibleConfig(StrictModel):
     api_key_required: bool = True
     model: str = Field(min_length=1)
     temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+    seed: int | None = None
     timeout_seconds: float = Field(default=60.0, gt=0.0)
     max_retries: int = Field(default=2, ge=0, le=10)
     request_json_object: bool = True
@@ -185,6 +186,7 @@ class PromptConfig(StrictModel):
     version: str = Field(min_length=1)
     system_path: Path
     user_path: Path
+    repair_path: Path
 
 
 class CorpusConfig(StrictModel):
@@ -302,6 +304,7 @@ def load_corpus_config(path: Path) -> CorpusConfig:
             update={
                 "system_path": _resolve_path(prompts.system_path, resolved),
                 "user_path": _resolve_path(prompts.user_path, resolved),
+                "repair_path": _resolve_path(prompts.repair_path, resolved),
             }
         )
     return config.model_copy(
@@ -330,6 +333,7 @@ def load_benchmark_config(path: Path) -> BenchmarkConfig:
         update={
             "system_path": _resolve_path(config.prompts.system_path, resolved),
             "user_path": _resolve_path(config.prompts.user_path, resolved),
+            "repair_path": _resolve_path(config.prompts.repair_path, resolved),
         }
     )
     conditions = [

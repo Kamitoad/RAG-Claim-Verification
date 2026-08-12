@@ -8,7 +8,12 @@ from pydantic import ValidationError
 
 from rag_claim_verification.models.claim import Claim, VerdictLabel
 from rag_claim_verification.models.document import Document
-from rag_claim_verification.models.prediction import Prediction
+from rag_claim_verification.models.prediction import (
+    CaseStatus,
+    ParseStatus,
+    Prediction,
+    RetrievalStatus,
+)
 
 
 def test_label_validation_rejects_unknown_value() -> None:
@@ -56,8 +61,13 @@ def test_claim_rejects_duplicate_gold_document_ids() -> None:
 def test_parse_error_prediction_cannot_have_label() -> None:
     with pytest.raises(ValidationError, match="parse-error"):
         Prediction(
+            case_id="test:claim_1",
             claim_id="claim_1",
+            claim="A claim",
             condition="test",
+            case_status=CaseStatus.PARSE_ERROR,
+            retrieval_status=RetrievalStatus.SUCCESS_EMPTY,
+            parse_status=ParseStatus.INVALID_AFTER_REPAIR,
             predicted_label=VerdictLabel.SUPPORTED,
             reason="Reason",
             latency_ms=1,

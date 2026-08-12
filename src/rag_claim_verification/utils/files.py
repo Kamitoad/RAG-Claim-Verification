@@ -83,6 +83,15 @@ def atomic_write_text(path: Path, content: str) -> None:
     os.replace(temporary, path)
 
 
+def atomic_write_bytes(path: Path, content: bytes) -> None:
+    """Atomically preserve exact source bytes for reproducibility snapshots."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_bytes(content)
+    os.replace(temporary, path)
+
+
 def ensure_new_directory(path: Path) -> None:
     """Create a run directory and fail instead of overwriting prior results."""
 

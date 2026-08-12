@@ -20,6 +20,7 @@ def test_prompt_builder_renders_claim_and_evidence(project_root: Path) -> None:
             version="test-v1",
             system_path=project_root / "prompts/verification_system.txt",
             user_path=project_root / "prompts/verification_user.txt",
+            repair_path=project_root / "prompts/verification_repair.txt",
         )
     )
     claim = Claim(claim_id="claim_1", claim="Schumacher drove for Benetton.")
@@ -43,6 +44,7 @@ def test_prompt_builder_marks_baseline_without_evidence(project_root: Path) -> N
             version="test-v1",
             system_path=project_root / "prompts/verification_system.txt",
             user_path=project_root / "prompts/verification_user.txt",
+            repair_path=project_root / "prompts/verification_repair.txt",
         )
     )
 
