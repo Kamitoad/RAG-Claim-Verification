@@ -1,0 +1,6 @@
+corpus_id: synthetic_smoke_noisy
+manifest_path: ../data/manifests/noisy_documents.jsonl
+clean_manifest_path: ../data/manifests/clean_documents.jsonl
+
+retriever:
+  type: in_memory
