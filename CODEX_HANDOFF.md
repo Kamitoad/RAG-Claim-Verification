@@ -1,397 +1,432 @@
 # CODEX Handoff
 
-## Original goal
+Last verified: 2026-08-12
+
+## Current project goal and scope
 
 Build a structured, reproducible Python research application for evidence-grounded
-verification of atomic factual claims in a controlled domain. The initial domain is
-Michael Schumacher's Formula One career from 1991 through 2012.
+verification of atomic factual claims in a closed knowledge domain.
 
-The system must classify each claim as one of:
+The current agreed research domain is **the complete 2023 Formula One season**. The
+previous Michael Schumacher 1991-2012 domain is obsolete. The application code is
+largely domain-independent, but the checked-in README, configurations, synthetic
+documents, manifests, example claims, and some tests have **not yet been migrated** and
+still refer to Michael Schumacher. Those files describe the old fixture domain, not the
+current research target.
+
+Each claim receives one of three labels:
 
 - `SUPPORTED`
 - `REFUTED`
 - `NOT_ENOUGH_EVIDENCE`
 
-The MVP was intended to compare three controlled experimental conditions over the same
-claims and compatible model settings:
+The intended controlled comparison remains:
 
 1. an LLM-only baseline without retrieval;
-2. RAG over a clean domain corpus;
-3. RAG over the complete clean corpus plus irrelevant or partially relevant documents.
+2. RAG over a clean 2023 Formula One corpus;
+3. RAG over the identical clean corpus plus a reproducibly defined noisy document set.
 
-The requested deliverable was a CLI-first application with validated JSONL/YAML inputs,
-LightRAG ingestion and retrieval, an OpenAI-compatible model client, strict structured
-predictions, reproducible run artifacts, classification and retrieval metrics, offline
-tests, and English technical documentation. It is explicitly not a general fake-news
-detector.
+The project accepts pre-formulated atomic claims. It is not a general fake-news
+detector, does not extract claims from articles, and does not currently provide a UI or
+an interactive wiki.
 
-## Current state
+## Repository state at this handoff
 
-The offline-testable MVP is implemented. It includes the application package, CLI,
-configuration and domain models, ingestion validation, LightRAG adapter, deterministic
-test retriever, OpenAI-compatible LLM client, verification pipeline, benchmark runner,
-evaluation reports, synthetic example inputs, and tests.
+- Branch: `feature/initial-codebase`
+- HEAD: `daafbef` (`Chore: Add repository development guidelines`).
+- `origin/feature/initial-codebase` is at `2d0fa99`; the local branch is two commits
+  ahead and not behind. The two local commits add the deterministic smoke benchmark
+  (`b4ee26a`) and the repository-wide `AGENTS.md` rules (`daafbef`).
+- The worktree currently has unstaged changes in `README.md` and `CODEX_HANDOFF.md`;
+  the new `uv.lock` is staged. No other paths appear in `git status`.
+- The `README.md` worktree change documents the smoke runner and expanded run artifacts,
+  but its Schumacher scope and examples remain stale.
+- `uv.lock` is a 79-package uv resolution, passes `uv lock --check`, and is available to
+  benchmark metadata for path/hash recording. Whether it should remain staged and be
+  committed is still a project decision.
+- `runs/` contains ignored deterministic synthetic smoke runs. They are engineering
+  artifacts, not research results. The latest verified run is
+  `runs/20260812T151029.999289Z-662dadf3`.
+- No `indices/` directory exists.
+- No `.env` file exists. The tracked `.env.example` contains only endpoint/model examples
+  and empty API-key values.
 
-The tracked example documents and claims are synthetic demonstration fixtures. They are
-not real research data and their outputs must not be reported as research results.
+The local ignored `.venv` uses Python 3.14.6 and contains the core and development
+dependencies used for the verification commands recorded below. The optional LightRAG
+extra is not installed in that environment.
 
-No real provider-backed LightRAG ingestion or query was run during implementation.
-Completing such a run requires installing the optional LightRAG dependency, selecting
-providers, and supplying credentials or local OpenAI-compatible endpoints.
+## What is already implemented
 
-At handoff time, the MVP is committed as `d87aafb` (`Feat: First Version of Codebase`) on
-`feature/initial-codebase`, and that commit is also the tip of
-`origin/feature/initial-codebase`. Only this `CODEX_HANDOFF.md` file is untracked. The
-pre-existing `.idea` directory was not modified and is ignored.
+The repository contains an offline-testable MVP with:
 
-## Important architectural decisions
+- a Python package using a `src` layout and Python `>=3.11`;
+- a Typer CLI with six commands: `validate-config`, `validate-corpus`, `ingest`,
+  `verify`, `benchmark`, and `evaluate`;
+- strict Pydantic v2 models for documents, claims, evidence, predictions, and run
+  metadata;
+- YAML configuration loading with environment interpolation and config-relative path
+  resolution;
+- JSONL manifest and claim loading with duplicate-ID and line-specific validation;
+- all-or-nothing document loading for UTF-8, missing-file, and empty-file checks;
+- validation that a noisy manifest preserves every clean document's content and
+  semantic metadata;
+- an adapter for the pinned optional dependency `lightrag-hku==1.5.4`;
+- ingestion metadata tying an index to corpus, content, configuration, and LightRAG
+  hashes/version;
+- a deterministic in-memory keyword retriever for tests and offline demonstrations;
+- an asynchronous OpenAI-compatible Chat Completions client with bounded retries;
+- versioned prompt files for baseline and RAG verification;
+- strict JSON output parsing, citation allow-listing, and one bounded repair attempt;
+- a sequential multi-condition benchmark runner;
+- classification metrics, retrieval metrics, confusion matrices, failure records, and
+  Markdown/JSON/CSV reports;
+- re-evaluation of a stored `predictions.jsonl` without model or retriever calls;
+- schema-versioned case manifests and one atomically checkpointed result per planned
+  claim-condition case;
+- exact snapshots of claims, prompts, source configs, manifests, available ingestion
+  metadata, and hashes under each run's `inputs/` directory;
+- explicit case, retrieval, parse, model, and technical-error states plus separately
+  defined stage timings;
+- provider-reported model revision, response ID, fingerprint, token usage, retry attempt
+  count, requested model settings, seed, source-tree hash, and lockfile hash where
+  available;
+- deterministic classification, retrieval, grounding-proxy, structured-output,
+  technical-error, latency, and completeness metrics;
+- unit tests and one complete offline integration workflow using controlled fake
+  components.
 
-### Package and tooling
+The tracked data under `data/` are synthetic teaching fixtures. Their labels and perfect
+offline integration-test score are not research findings.
 
-- Python 3.11+ with a `src` layout and `pyproject.toml`.
-- Pydantic v2 models use strict validation and reject unknown fields.
-- Typer provides the CLI.
-- Ruff is used for linting and formatting, mypy runs in strict mode, and pytest provides
-  unit and integration tests.
-- JSONL is used for manifests, claims, and predictions; JSON and CSV are used for run
-  metadata and reports.
+## Actual application execution flow
 
-### Separation of retrieval and verification
+### Configuration and validation
 
-The verifier never performs retrieval. A retriever returns `list[Evidence]`, and the
-claim verifier receives the claim and already-retrieved evidence. This separation is
-intentional so benchmark analysis can distinguish retrieval failures from reasoning
-failures.
+1. `cli.py` receives a command and config path.
+2. `config.py` loads `.env` without overriding existing environment values, reads YAML,
+   expands `${NAME}` or `${NAME:-default}`, validates strict Pydantic models, and resolves
+   declared paths relative to the YAML file.
+3. Prompt files are loaded and checked for required placeholders.
+4. Claims or manifests are parsed from JSONL. Duplicate IDs, malformed records, missing
+   files, non-UTF-8 files, and empty documents are rejected.
+5. When a clean manifest is supplied, `validate_noisy_superset` verifies that every clean
+   document occurs unchanged in the noisy corpus.
 
-Small protocols define the real exchange points:
+### Corpus ingestion
 
-- `Retriever.retrieve(query, top_k)` plus lifecycle methods;
-- `LLMClient.generate(...)` plus lifecycle cleanup.
+1. `ingest` loads and validates the complete corpus before contacting LightRAG.
+2. `LightRAGAdapter` checks that LightRAG 1.5.4 is installed and configures its LLM and
+   embedding functions from the OpenAI-compatible settings.
+3. `IngestionService` rejects a non-empty unknown working directory and rejects metadata
+   belonging to different corpus content, index settings, or LightRAG version.
+4. The adapter initializes LightRAG storage and calls `ainsert` with document text,
+   stable manifest IDs, and declared file paths.
+5. After a successful call, `ragcv_ingestion_metadata.json` is written to the index
+   directory. The adapter then finalizes LightRAG storage.
 
-The deterministic in-memory keyword retriever exists for offline tests only. It is not
-presented as a scientific replacement for LightRAG.
+This path is implemented and unit-tested with fakes, but it has not been executed here
+against an installed LightRAG package or a real provider.
 
-### LightRAG boundary and version
+### Single-claim verification
 
-- The optional dependency is pinned to `lightrag-hku==1.5.4`.
-- All LightRAG-specific behavior is confined to
-  `src/rag_claim_verification/retrieval/lightrag_adapter.py` and the ingestion service.
-- The adapter uses the public 1.5.4 APIs that were checked during implementation:
-  `LightRAG`, `QueryParam`, explicit `initialize_storages()`, `ainsert(...)`,
-  `aquery_data(...)`, and `finalize_storages()`.
-- The adapter checks the installed LightRAG version at runtime.
-- Stable document IDs and declared file paths are passed during ingestion.
-- Returned LightRAG file paths are mapped back to manifest document IDs. Unknown or
-  ambiguous mappings remain `null`; IDs are not invented.
-- LightRAG 1.5.4 does not document a per-chunk retrieval score in the public structured
-  query response, so LightRAG evidence stores `retrieval_score: null`.
+1. `verify` loads one corpus configuration and creates a deterministic ad-hoc claim ID.
+2. The production factory reloads the manifest, checks that the configured LightRAG
+   index metadata matches it, and creates the retriever and verification client.
+3. The retriever calls LightRAG `aquery_data` with the configured query mode and `top_k`.
+4. Returned chunks are converted to ranked `Evidence`. Returned file paths are mapped
+   back to manifest document IDs where possible. LightRAG retrieval scores remain
+   `null`, because this adapter does not receive a documented per-chunk score.
+5. `PromptBuilder` renders the claim and JSON evidence into the versioned prompt.
+6. `ClaimVerifier` calls the OpenAI-compatible `chat/completions` endpoint.
+7. The response must be one strict JSON object with `label`, `reason`, and
+   `cited_document_ids`. Unknown fields, invalid labels, duplicate JSON keys,
+   non-standard constants, and citations outside the retrieved document IDs are
+   rejected.
+8. One repair request is attempted after a parse/schema failure. A second failure creates
+   a failed prediction with the raw and repair output; no fallback label is invented.
 
-### Reproducible ingestion
+### Benchmark execution
 
-Manifest validation is all-or-nothing. Duplicate IDs, missing files, empty files, and
-invalid records are rejected rather than skipped.
+1. `benchmark` loads all gold claims in file order and validates prompt and corpus inputs.
+2. A unique run directory, resolved config, complete `case_manifest.jsonl`, exact input
+   snapshots, and initial `metadata.json` are created before provider calls.
+3. Conditions run sequentially. The baseline receives no evidence. Each RAG condition
+   retrieves evidence before invoking the same verifier interface.
+4. Per-claim retrieval, provider, parsing, and pipeline errors are recorded as failed
+   predictions where possible.
+5. `predictions.jsonl` is atomically checkpointed after every case. Caught run-level
+   failures create explicit error results for every case not yet executed.
+6. After all conditions finish, the runner writes deterministic aggregate metrics, CSV
+   files, `failures.jsonl`, and `summary.md`, then hashes the final raw predictions.
+7. `evaluate` validates the case-manifest, predictions, resolved-config, and claims-
+   snapshot hashes plus the complete case matrix before regenerating derived files
+   without external calls.
 
-The noisy manifest must contain every clean document with the same content and semantic
-metadata. It may add documents and may differ in location-only metadata such as tags or
-file paths where allowed by the implemented comparison.
+Generated run files are:
 
-Each LightRAG working directory receives `ragcv_ingestion_metadata.json`, including the
-corpus identity, content-sensitive hashes, document IDs, LightRAG version, and index
-configuration hash. A non-empty directory without this metadata, or an index associated
-with different content/configuration/version, is rejected rather than silently reused.
-Clean and noisy configurations use separate working directories under ignored
-`indices/`.
-
-### Structured model output
-
-- Prompts are versioned files under `prompts/`, not embedded long strings.
-- RAG mode instructs the model to use only supplied evidence.
-- Baseline mode is explicitly marked as having no external evidence and cannot cite
-  documents.
-- Model output is parsed strictly. Unknown fields, invalid labels, duplicate JSON keys,
-  non-finite constants, code fences, and citations not present in retrieved evidence are
-  rejected.
-- At most one bounded JSON repair request is made. If repair also fails, the raw output
-  is retained and the prediction is marked as a parse error. No fallback label is
-  fabricated.
-- Verification temperature defaults to `0.0`; this improves comparability but does not
-  guarantee provider-level determinism.
-
-### Benchmark comparability and reporting
-
-- Claims are processed in file order and conditions run sequentially.
-- With `enforce_comparability: true`, incompatible model settings, RAG `top_k`, or
-  relevant retriever settings are rejected.
-- Every benchmark creates a unique run directory and does not overwrite an existing
-  run.
-- Configuration snapshots do not contain API-key values. Model endpoints are sanitized
-  before metadata is persisted.
-- Missing predictions count as incorrect and as false negatives for their gold class;
-  they are never assigned an invented label.
-- Retrieval metrics are emitted only when gold document IDs exist and retrieved evidence
-  can be mapped to concrete document IDs. Otherwise the metrics contain an explicit
-  unavailability reason.
-- Failure categories in `failures.jsonl` are based on observable facts and avoid
-  unsupported causal claims.
-
-## Files created or modified
-
-### Modified
-
-- `README.md` — expanded from the initial two-line file into the complete English MVP
-  documentation, including scope, architecture, installation, workflows, metrics,
-  reproducibility, limitations, copyright guidance, and roadmap.
-
-### Created: project foundation
-
-- `pyproject.toml`
-- `.gitignore`
-- `.env.example`
-- `runs/.gitkeep`
-
-### Created: configuration and prompts
-
-- `configs/clean_corpus.yaml`
-- `configs/noisy_corpus.yaml`
-- `configs/benchmark.yaml`
-- `configs/baseline.yaml`
-- `prompts/verification_system.txt`
-- `prompts/verification_user.txt`
-
-### Created: synthetic example data
-
-- `data/README.md`
-- `data/manifests/clean_documents.jsonl`
-- `data/manifests/noisy_documents.jsonl`
-- `data/ground_truth/claims.example.jsonl`
-- `data/corpora/clean/synthetic_1991.txt`
-- `data/corpora/clean/synthetic_1994.txt`
-- `data/corpora/clean/synthetic_2010.txt`
-- `data/corpora/noisy/synthetic_astronomy.txt`
-- `data/corpora/noisy/synthetic_motorsport_noise.txt`
-
-### Created: application package
-
-- `src/rag_claim_verification/__init__.py`
-- `src/rag_claim_verification/__main__.py`
-- `src/rag_claim_verification/py.typed`
-- `src/rag_claim_verification/cli.py`
-- `src/rag_claim_verification/config.py`
-- `src/rag_claim_verification/errors.py`
-- `src/rag_claim_verification/logging_config.py`
-- `src/rag_claim_verification/models/` — base, claim, document, evidence, prediction, and
-  run models plus package exports.
-- `src/rag_claim_verification/ingestion/` — manifest parsing, document loading, and
-  ingestion orchestration.
-- `src/rag_claim_verification/retrieval/` — retriever protocol, deterministic in-memory
-  retriever, and LightRAG adapter.
-- `src/rag_claim_verification/llm/` — LLM protocol, OpenAI-compatible HTTP client, and
-  strict structured-output parsing.
-- `src/rag_claim_verification/verification/` — prompt builder, RAG verifier, and baseline
-  verifier.
-- `src/rag_claim_verification/evaluation/` — benchmark runner, classification metrics,
-  retrieval metrics, reporting, and stored-run re-evaluation.
-- `src/rag_claim_verification/utils/` — atomic file helpers and hashing.
-
-### Created: tests
-
-- `tests/conftest.py`
-- `tests/unit/test_models.py`
-- `tests/unit/test_manifest.py`
-- `tests/unit/test_hashing.py`
-- `tests/unit/test_config.py`
-- `tests/unit/test_prompt_and_output.py`
-- `tests/unit/test_verifier.py`
-- `tests/unit/test_in_memory_retriever.py`
-- `tests/unit/test_lightrag_adapter.py`
-- `tests/unit/test_ingestion_service.py`
-- `tests/unit/test_openai_compatible.py`
-- `tests/unit/test_classification_metrics.py`
-- `tests/unit/test_retrieval_metrics.py`
-- `tests/integration/test_benchmark_workflow.py`
-- `tests/integration/test_lightrag_external.py`
-
-Package `__init__.py` files also exist within each application subpackage.
-
-## Relevant commands
-
-### Installation
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
+```text
+runs/<run-id>/
+|-- metadata.json
+|-- resolved_config.yaml
+|-- case_manifest.jsonl
+|-- predictions.jsonl
+|-- inputs/
+|   |-- benchmark.yaml
+|   |-- claims.jsonl
+|   |-- hashes.json
+|   |-- prompts/
+|   |-- corpus_configs/
+|   |-- manifests/
+|   `-- ingestion_metadata/
+|-- metrics.json
+|-- metrics.csv
+|-- confusion_matrix.csv
+|-- failures.jsonl
+`-- summary.md
 ```
 
-Install the pinned real LightRAG integration when it is needed:
+## Important files and responsibilities
+
+### Project and documentation
+
+- `pyproject.toml` - package metadata, runtime/dev/LightRAG dependencies, CLI entry point,
+  and pytest/Ruff/mypy configuration.
+- `uv.lock` - current 79-package uv resolution; staged and valid according to
+  `uv lock --check`, but not yet committed.
+- `AGENTS.md` - committed repository-wide development, safety, reproducibility, and
+  definition-of-done rules. Current-status details belong in this handoff instead.
+- `README.md` - detailed user documentation for the MVP; its stated Schumacher domain is
+  now stale.
+- `CODEX_HANDOFF.md` - verified project state and next-step handoff.
+- `.env.example` - names and example values for verification, LightRAG LLM, and embedding
+  endpoints. It contains no real secret.
+- `.gitignore` - excludes local environments, credentials, indices, generated runs, and
+  local corpora.
+
+### Configuration and prompts
+
+- `configs/benchmark.yaml` - current three-condition example benchmark. It still uses the
+  old experiment name and synthetic claims.
+- `configs/baseline.yaml` - current baseline-only example.
+- `configs/clean_corpus.yaml` / `configs/noisy_corpus.yaml` - current LightRAG corpus,
+  model, embedding, prompt, and index settings. Corpus IDs and paths still use the old
+  fixture domain.
+- `prompts/verification_system.txt` - label definitions, baseline/RAG evidence rules, and
+  exact JSON output contract.
+- `prompts/verification_user.txt` - template for mode, labels, claim, and evidence.
+- `prompts/verification_repair.txt` - versioned and hash-covered bounded repair prompt.
+- `configs/smoke_benchmark.yaml` and its two corpus configs - deterministic synthetic
+  full-path smoke benchmark using the production HTTP client and in-memory retriever.
+
+### Data
+
+- `data/README.md` - manifest format and local/copyrighted-data guidance.
+- `data/manifests/*.jsonl` - current three-document clean and five-document noisy
+  synthetic manifests.
+- `data/ground_truth/claims.example.jsonl` - five synthetic Schumacher claims.
+- `data/corpora/clean/*.txt` and `data/corpora/noisy/*.txt` - synthetic fixture text only.
+
+No real 2023 Formula One corpus, provenance table, annotation protocol, or final claim
+set exists yet.
+
+### Application package
+
+- `src/rag_claim_verification/cli.py` - CLI commands, exit codes, and top-level workflow
+  wiring.
+- `src/rag_claim_verification/config.py` - strict config models, interpolation, path
+  resolution, comparability validation, and index config hashing.
+- `src/rag_claim_verification/models/` - strict domain and persisted-run models.
+- `src/rag_claim_verification/ingestion/manifest.py` - manifest parsing, corpus hashing,
+  path resolution, and clean/noisy superset checks.
+- `src/rag_claim_verification/ingestion/loader.py` - complete UTF-8 document validation
+  and loading.
+- `src/rag_claim_verification/ingestion/service.py` - guarded ingestion orchestration and
+  index identity metadata.
+- `src/rag_claim_verification/retrieval/base.py` - framework-independent retriever
+  protocol.
+- `src/rag_claim_verification/retrieval/in_memory_retriever.py` - deterministic whole-
+  document keyword retriever used by tests/demos.
+- `src/rag_claim_verification/retrieval/lightrag_adapter.py` - all LightRAG 1.5.4 imports,
+  initialization, insertion, structured retrieval, path mapping, and cleanup.
+- `src/rag_claim_verification/llm/base.py` - model-client protocol.
+- `src/rag_claim_verification/llm/openai_compatible.py` - asynchronous Chat Completions
+  HTTP client and retries.
+- `src/rag_claim_verification/llm/structured_output.py` - strict JSON/schema/citation
+  validation.
+- `src/rag_claim_verification/verification/` - prompt rendering, baseline wrapper, and
+  evidence-grounded verifier with one repair attempt.
+- `src/rag_claim_verification/evaluation/benchmark.py` - component factory, claim loading,
+  controlled run execution, metadata, and artifact orchestration.
+- `src/rag_claim_verification/evaluation/classification_metrics.py` - accuracy, per-class
+  precision/recall/F1, Macro-F1, and confusion matrix including `NO_PREDICTION`.
+- `src/rag_claim_verification/evaluation/retrieval_metrics.py` - Evidence Recall@1/@3/@5
+  and MRR from concrete document IDs.
+- `src/rag_claim_verification/evaluation/reporting.py` - JSON/CSV/Markdown reports and
+  observable failure categories.
+- `src/rag_claim_verification/evaluation/evaluate.py` - stored-prediction re-evaluation.
+- `src/rag_claim_verification/utils/` - atomic file output and SHA-256 helpers.
+
+### Tests
+
+- `tests/unit/` covers models, manifests, hashing, config comparability, prompt rendering,
+  output parsing, repair behavior, both retriever boundaries, ingestion protection,
+  HTTP payloads, and metrics.
+- `tests/integration/test_benchmark_workflow.py` runs all three conditions and stored-run
+  re-evaluation with fake verification and the in-memory retriever.
+- `tests/integration/test_lightrag_external.py` only checks the installed LightRAG version
+  when explicitly enabled. It does not perform ingestion, retrieval, or a provider call.
+
+## Commands verified successfully on 2026-08-12
+
+The following commands ran successfully in this repository on Windows with uv 0.12.0
+and Python 3.14.6:
 
 ```powershell
-python -m pip install -e ".[dev,lightrag]"
-Copy-Item .env.example .env
+$env:PYTHONDONTWRITEBYTECODE='1'; .\.venv\Scripts\python.exe -m pytest -p no:cacheprovider
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+.\.venv\Scripts\python.exe -m mypy src
+uv lock --check
+.\.venv\Scripts\python.exe scripts\run_smoke_benchmark.py
+.\.venv\Scripts\python.exe -m rag_claim_verification evaluate `
+  --run-dir runs/<smoke-run-id>
 ```
 
-Do not commit `.env`. Configure the verification LLM, LightRAG LLM, and embedding
-endpoint variables listed in `.env.example`. The checked-in YAML defaults point to
-OpenAI-compatible endpoints, but model names, URLs, keys, and local paths are not
-hardcoded in application code.
+Observed results:
 
-### Validation and execution
+- pytest: **44 passed, 1 skipped**;
+- skipped test: opt-in installed-version-only LightRAG test;
+- Ruff lint: passed;
+- Ruff format check: **59 files already formatted**;
+- mypy strict check: no issues in 38 source files;
+- `uv lock --check`: passed with 79 resolved packages;
+- the deterministic synthetic smoke benchmark completed all 15 planned cases;
+- three deliberately invalid first responses were repaired once and preserved in raw
+  case results;
+- all 15 cases succeeded, and `failures.jsonl` contains zero records;
+- stored-run re-evaluation reproduced byte-identical `metrics.json`;
+- latest smoke run: `runs/20260812T151029.999289Z-662dadf3`;
+- latest `metrics.json` SHA-256:
+  `6291E7BD53ED81ADA70304A5E915086A86BA7B071AC4CE418EBB3E073C1EA5B5`.
 
-```powershell
-rag-claim-verification validate-config --config configs/benchmark.yaml
+These checks made no external, paid, or LightRAG calls. The smoke benchmark used a local
+deterministic OpenAI-compatible fixture and the production HTTP client.
 
-rag-claim-verification validate-corpus `
-  --manifest data/manifests/clean_documents.jsonl
+## Known limitations, failures, and unfinished areas
 
-rag-claim-verification validate-corpus `
-  --manifest data/manifests/noisy_documents.jsonl `
-  --clean-manifest data/manifests/clean_documents.jsonl
+### Domain and research data
 
-rag-claim-verification ingest --config configs/clean_corpus.yaml
-rag-claim-verification ingest --config configs/noisy_corpus.yaml
+- The agreed F1 2023 scope is not reflected in checked-in docs/configs/data/tests.
+- There is no real F1 2023 clean corpus or defined noisy corpus.
+- There is no provenance/licensing record for research data.
+- There is no final claim set, annotation guide, independent review, or adjudication
+  record.
+- Gold document IDs in the synthetic examples do not establish a method for exhaustively
+  identifying relevant evidence in a real corpus.
+- No research benchmark has been executed and no current output may be reported as a
+  research result.
 
-rag-claim-verification verify `
-  --config configs/clean_corpus.yaml `
-  --claim "Michael Schumacher won the 1994 championship."
+### External integration
 
-rag-claim-verification benchmark `
-  --config configs/benchmark.yaml `
-  --claims data/ground_truth/claims.example.jsonl
+- `lightrag-hku` was not installed or called during the current verification.
+- No real LightRAG ingestion or query has been run for this repository.
+- `ingest`, provider-backed `verify`, and provider-backed `benchmark` are therefore not
+  verified.
+- No hosted model, local LLM, embedding model, API endpoint, or hardware profile has been
+  selected for the final experiment.
+- FastEmbed is not a dependency and no FastEmbed adapter exists.
+- Local OpenAI-compatible endpoints are configurable in principle and the HTTP client is
+  unit-tested with a mock transport, but Ollama/LM Studio/local-model operation has not
+  been run.
+- No LLM-wiki workflow or interface exists.
 
-rag-claim-verification benchmark --config configs/baseline.yaml
+### Known implementation boundaries
 
-rag-claim-verification evaluate --run-dir runs/<run-id>
-```
+- LightRAG retrieval scores are stored as `null`.
+- Retrieval metrics become unavailable if LightRAG paths cannot be mapped to manifest
+  document IDs.
+- RAG `SUPPORTED` and `REFUTED` outputs are not currently required by schema validation
+  to contain at least one citation; only unknown citations are rejected.
+- Re-running ingestion with matching metadata calls the ingestor again rather than
+  returning an explicit already-ingested result.
+- Stored-run `evaluate` validates the hashes of `case_manifest.jsonl`,
+  `predictions.jsonl`, `resolved_config.yaml`, and `inputs/claims.jsonl`, plus exact case
+  completeness. It does not currently re-hash every prompt, corpus configuration,
+  manifest, ingestion-metadata snapshot, or document-content hash listed under
+  `inputs/`.
+- Model output JSON rejects duplicate keys and non-standard numeric constants, but the
+  generic JSONL/YAML input readers use the standard parsers and do not explicitly reject
+  duplicate object/mapping keys. Strict Pydantic validation still rejects unknown
+  fields after parsing.
+- Confidence intervals, paired statistical tests, repeated-run aggregation, token/cost
+  accounting, evidence-conflict detection, and temporal filtering are not implemented.
 
-CLI exit codes are `0` for clean completion, `1` when verification/benchmark completes
-with failed predictions, and `2` for invalid input, unmet prerequisites, or operational
-failure.
+### Observed environment failures
 
-### Quality checks
+- Bare `python` resolves to the unavailable Windows Store alias in the reviewed shell;
+  use `uv run` or `.venv\Scripts\python.exe`.
+- A previous `uv run --frozen pytest` without `--extra dev` failed because pytest/Ruff/
+  mypy were not installed in that environment. The current repository-local `.venv`
+  contains the development tools and produced the successful results above.
+- `mypy --cache-dir NUL src` fails internally on Windows because `NUL` is a device path;
+  the canonical `mypy src` invocation passes.
+- Python 3.14.6 passed the offline suite, but the real LightRAG integration has not been
+  verified on that interpreter.
 
-```powershell
-python -m pytest
-python -m ruff check .
-python -m ruff format --check .
-python -m mypy src
-python -m pip check
-```
+## Decisions already made
 
-The optional external test is skipped unless `RAGCV_RUN_EXTERNAL_TESTS=1` is set and the
-LightRAG extra is installed.
+- The target knowledge domain is the complete Formula One 2023 season.
+- Inputs are atomic claims and outputs use the three fixed verdict labels.
+- The main experiment compares baseline, clean RAG, and noisy RAG over the same claims.
+- Retrieval and verification remain separate interfaces so failures can be analyzed
+  independently.
+- Domain/persistence models and model output are strictly validated, and invalid
+  predictions do not receive fabricated fallback labels.
+- Prompt files and run artifacts are versioned/hashed for reproducibility.
+- LightRAG-specific code remains isolated behind the retriever adapter; the repository
+  is currently pinned to LightRAG 1.5.4.
+- Synthetic fixtures are demonstrations only.
+- A local LLM, FastEmbed, or an LLM-wiki concept may be explored later, but none is an
+  implemented or selected part of the current experiment.
 
-## Tests and checks already executed
+## Decisions still open
 
-The final recorded local verification used Python 3.12.3 and produced:
+- Exact inclusion/exclusion boundaries within the 2023 season: races only versus
+  qualifying, sprints, practices, telemetry, weather, and narrative sources.
+- Permissible source collection, acquisition method, normalization, provenance, and
+  redistribution policy.
+- Definition and reproducible construction of the noisy corpus.
+- Number and class balance of claims.
+- Annotation, independent review, disagreement, and adjudication protocol.
+- Whether every evaluable claim needs exhaustive `gold_document_ids` or retrieval
+  metrics use a documented subset.
+- Hosted versus local verification and LightRAG models.
+- Embedding provider/model/dimension, including whether FastEmbed is worth adding.
+- Final target Python version and whether the currently staged `uv.lock` should be
+  committed.
+- Repeated-run policy and statistical analysis appropriate for the final claim count.
+- Whether to harden LightRAG path-to-document mapping and require citations for decisive
+  RAG verdicts before the pilot.
+- Whether full stored-input hash verification and duplicate-key rejection for JSONL/YAML
+  should be required before the pilot or recorded as post-pilot hardening.
 
-- `python -m pytest`: **37 passed, 1 skipped**. The skipped test is the opt-in external
-  LightRAG installed-version check. Standard tests made no external or paid API calls.
-- `python -m ruff check .`: **passed** (`All checks passed`).
-- `python -m ruff format --check .`: **passed** (`55 files already formatted`).
-- `python -m mypy src`: **passed** (`no issues found in 38 source files`).
-- `python -m pip check`: **passed** (`No broken requirements found`).
-- The installed `rag-claim-verification --help` command ran successfully and displayed
-  all six required commands.
-- `rag-claim-verification validate-config --config configs/benchmark.yaml`: **passed**.
-- Clean and noisy manifest validation passed, including the noisy-superset check.
-- A repository secret-pattern scan found no matching credentials.
-- `runs/` contained only `.gitkeep`; no generated research runs were left in the
-  repository.
+## Single most sensible next milestone
 
-The offline integration test exercises five synthetic claims across baseline, clean RAG,
-and noisy RAG using fake components. It creates all required run artifacts and verifies
-that stored-run re-evaluation reproduces the metrics. Its synthetic perfect score is a
-test assertion, not a research result.
+Produce **one reproducible, provider-backed F1 2023 pilot benchmark**.
 
-## Known problems, limitations, and failed approaches
+The milestone is complete only when:
 
-No failed implementation approach was recorded in this work. The following known
-limitations remain and must not be mistaken for completed provider validation:
+1. the research-facing README, configurations, data examples, and tests use F1 2023;
+   any retained Schumacher material is isolated and explicitly named as a legacy
+   engineering fixture rather than the current research scope;
+2. a small permissible 2023 clean corpus, a documented noisy superset, and reviewed
+   pilot claims exist and pass both corpus validators;
+3. the final pilot LLM and embedding choices are recorded;
+4. LightRAG 1.5.4 is installed and both pilot indices ingest successfully;
+5. returned evidence paths map to manifest document IDs;
+6. baseline, clean RAG, and noisy RAG run over the same pilot claims;
+7. the generated run contains predictions, metrics, failure analysis, metadata, and no
+   unexplained pipeline or parse failures.
 
-- A real LightRAG ingestion/query was not executed locally because it requires the
-  optional dependency plus model and embedding providers. Only the adapter behavior,
-  version boundary, structured response mapping, and ingestion orchestration were tested
-  with controlled components.
-- LightRAG 1.5.4's public structured query result does not document per-chunk retrieval
-  scores. The adapter deliberately emits `null` rather than calculating or inventing a
-  score.
-- LightRAG document IDs depend on mapping returned file paths back to manifest paths.
-  Ambiguous or unknown paths produce `document_id: null` and make retrieval metrics
-  unavailable for the affected condition.
-- LightRAG hybrid/local/global/mix querying may invoke its configured LLM for keyword
-  processing in addition to embedding operations. Provider usage and cost are therefore
-  not limited to final claim verification.
-- The in-memory retriever scores whole documents by query-token coverage. It exists only
-  for deterministic tests and offline demonstrations.
-- The example corpus and claim labels are synthetic, small, and unsuitable for scientific
-  conclusions.
-- The baseline has no external evidence and therefore cannot provide document citations.
-- The system accepts pre-formulated atomic claims only. It does not extract claims from
-  articles or aggregate multiple claim verdicts.
-- Confidence intervals, significance tests, evidence-conflict detection, temporal
-  filtering, calibrated confidence, reranking, and alternative retrieval baselines are
-  not implemented.
-- The dependency set pins LightRAG exactly but does not currently include a generated
-  full transitive lock file.
-
-## Unresolved questions
-
-These decisions were intentionally not invented during MVP implementation:
-
-- Which hosted or local OpenAI-compatible verification model, LightRAG extraction model,
-  and embedding model will be used for the actual experiment?
-- Can provider-side model revisions be pinned, and how will model changes during the
-  study be controlled?
-- What licensed or otherwise permissible source collection will form the real clean
-  Schumacher corpus?
-- What inclusion/exclusion rules define the closed knowledge domain and its temporal
-  boundaries in practice?
-- How will noisy documents be sampled, categorized, and stratified so that the noise
-  intervention is reproducible rather than anecdotal?
-- How many claims per class are required, and what annotation protocol, independent
-  review, and adjudication process will establish the ground truth?
-- Should every evaluable claim have exhaustive `gold_document_ids`, or will retrieval
-  metrics be reported on a documented subset?
-- How many repeated model runs are needed, and which confidence intervals or statistical
-  tests will be used for condition comparisons?
-- Should a dependency lock file be added for the target operating system/environment?
-
-## Concrete recommended next steps
-
-1. **Review and commit this handoff file if it should be retained.** The MVP itself is
-   already committed as `d87aafb`; only `CODEX_HANDOFF.md` is currently untracked. Run
-   the quality checks once more in the target development environment before further
-   code changes. Do not commit `.env`, `indices/`, generated `runs/`, or real copyrighted
-   document text.
-2. **Create a dedicated environment with LightRAG.** Install `.[dev,lightrag]`, copy
-   `.env.example` to a local `.env`, and choose either hosted providers or local
-   OpenAI-compatible endpoints. Keep the configured embedding model and dimension stable
-   for an existing index.
-3. **Run a provider-backed smoke test.** Use only the synthetic corpus first. Validate the
-   config, ingest clean and noisy indexes, verify several individual claims, and inspect
-   returned evidence paths/IDs. This is the main integration point not yet exercised
-   against the actual LightRAG package and providers.
-4. **Design and document the real corpus protocol.** Define source eligibility, date and
-   domain boundaries, provenance/licensing records, text normalization, and clean/noisy
-   construction before collecting data. Keep full text outside Git unless redistribution
-   rights are established.
-5. **Develop the ground-truth protocol.** Write annotation guidelines for atomicity and
-   the three labels, use independent annotation and adjudication, and record gold
-   document IDs where the evidence set is sufficiently known.
-6. **Build and validate real manifests.** Ensure the noisy manifest is a content-preserving
-   superset of clean, then run both `validate-corpus` commands before ingestion.
-7. **Run a small pilot benchmark.** Check retrieval coverage, citation mapping, parse
-   failures, latency, and cost before scaling. Manually inspect cases where gold evidence
-   was missed and cases where it was retrieved but the verdict was wrong.
-8. **Freeze the experiment configuration.** Record provider/model revisions where
-   available, decide whether to add a lock file, archive input hashes, and avoid tuning on
-   the final evaluation claims.
-9. **Add statistical analysis after the pilot is stable.** Define repeated-run policy,
-   confidence intervals, significance tests, and noise levels before interpreting
-   clean-versus-noisy differences.
-10. **Only then consider retrieval extensions.** BM25 is a useful transparent next
-    baseline; dense retrieval, reranking, temporal filtering, and claim extraction should
-    remain later extensions through the existing protocols.
-
-For fuller user-facing instructions and known limitations, see `README.md`. For corpus
-format, copyright, and local-data handling guidance, see `data/README.md`.
+Do not add a UI, FastEmbed integration, LLM-wiki layer, additional retriever, or large
+statistical subsystem before this pilot proves the existing provider boundary works.

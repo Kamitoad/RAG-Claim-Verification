@@ -233,6 +233,20 @@ Run the baseline alone with:
 rag-claim-verification benchmark --config configs/baseline.yaml
 ```
 
+Run the deterministic synthetic smoke benchmark on Windows without credentials or
+external services:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_smoke_benchmark.py
+```
+
+The script starts a local deterministic Chat Completions fixture and then launches the
+real `python -m rag_claim_verification benchmark` CLI with
+`configs/smoke_benchmark.yaml`. The run exercises configuration loading, the production
+HTTP client, structured-output repair, baseline verification, both in-memory retrieval
+conditions, per-case checkpointing, metrics, and stored-run re-evaluation. Its synthetic
+outputs are an engineering check only, never a research result.
+
 ## Run outputs and interpretation
 
 Each benchmark creates a unique, never-overwritten directory:
@@ -241,7 +255,16 @@ Each benchmark creates a unique, never-overwritten directory:
 runs/<run-id>/
 ├── metadata.json
 ├── resolved_config.yaml
+├── case_manifest.jsonl
 ├── predictions.jsonl
+├── inputs/
+│   ├── benchmark.yaml
+│   ├── claims.jsonl
+│   ├── hashes.json
+│   ├── prompts/
+│   ├── corpus_configs/
+│   ├── manifests/
+│   └── ingestion_metadata/
 ├── metrics.json
 ├── metrics.csv
 ├── confusion_matrix.csv
@@ -249,9 +272,17 @@ runs/<run-id>/
 └── summary.md
 ```
 
-- `metadata.json` records time, Git commit when available, Python/platform/package versions, model and endpoint, temperature, retriever, top-k, input hashes, prompt version/hash, and success/failure counts.
+- `metadata.json` records schema version, planned/completed counts, timing definitions,
+  Git state, Python/platform/package versions, requested model settings, retriever,
+  corpus and manifest hashes, prompt hashes, and success/failure counts.
 - `resolved_config.yaml` snapshots the benchmark and corpus settings without API-key values.
-- `predictions.jsonl` preserves verdicts, ground truth, retrieved evidence, raw and repair outputs, citations, errors, and latencies.
+- `case_manifest.jsonl` declares every expected claim-condition case before external calls.
+- `inputs/` snapshots claims, prompts, source configurations, manifests, available
+  ingestion metadata, and content-sensitive hashes.
+- `predictions.jsonl` is atomically checkpointed after every case and preserves claim
+  text, explicit case/retrieval/parse status, verdict, ground truth, ordered evidence,
+  raw and repair outputs, provider response metadata, citations, technical errors, and
+  stage timings.
 - `metrics.json` is the authoritative structured metric output.
 - the CSV files simplify analysis in spreadsheets and statistical tools.
 - `failures.jsonl` assigns only observable diagnostic categories, such as missing gold evidence or an incorrect verdict despite retrieved gold evidence.
@@ -262,6 +293,9 @@ Regenerate derived artifacts without calling a model or retriever:
 ```bash
 rag-claim-verification evaluate --run-dir runs/<run-id>
 ```
+
+Re-evaluation verifies the persisted hashes of the case manifest, raw predictions,
+resolved configuration, and claims snapshot before regenerating derived files.
 
 ## Evaluation metrics
 
@@ -275,7 +309,23 @@ Classification output includes:
 
 Missing/failed predictions count as incorrect for accuracy and as false negatives for their gold class. They never receive a fabricated fallback label.
 
-For retrieval, the application computes Evidence Recall@1, @3, and @5 as the mean fraction of each claim's gold document IDs found in the first `k` ranks, plus Mean Reciprocal Rank of the first relevant document. A condition receives retrieval metrics only when gold IDs exist and every eligible retrieval can be mapped to concrete document IDs. Otherwise `metrics.json` records an explicit unavailability reason.
+For retrieval, the application computes Evidence Recall and Hit Rate at 1, 3, and 5,
+plus Mean Reciprocal Rank of the first relevant document. A condition receives retrieval
+metrics only when gold IDs exist and every eligible retrieval can be mapped to concrete
+document IDs. Otherwise `metrics.json` records coverage and an explicit unavailability
+reason.
+
+`metrics.json` keeps classification, retrieval, grounding proxies, structured-output
+validity/repair, technical errors, and latency summaries in separate namespaces. Before
+evaluation it requires exactly one prediction for every `case_manifest.jsonl` record;
+missing or duplicate cases are rejected instead of producing metrics over a silent
+subset.
+
+Per-case timings use a monotonic clock. Retrieval time covers only the awaited retriever
+call, initial and repair generation times include provider retries, total time starts at
+retrieval for RAG or prompt rendering for the baseline, and benchmark duration covers
+condition execution plus raw and derived artifact writing. The exact definitions are
+also persisted in `metadata.json`.
 
 No weighted aggregate is used as the sole headline metric. The MVP does not calculate confidence intervals or statistical significance tests.
 
@@ -286,12 +336,16 @@ The application protects reproducibility through:
 - a `src` package and declared Python requirement;
 - a fixed LightRAG version;
 - versioned prompt files and prompt hashes;
+- exact prompt, claim, configuration, and manifest snapshots inside each run;
 - content-sensitive corpus hashes and claim/config file hashes;
 - low default verification temperature (`0.0`);
+- an optional recorded/requested model seed where the provider supports it;
 - bounded retries and exactly one structured-output repair attempt;
 - unique run IDs and refusal to overwrite run directories;
 - resolved non-secret configuration snapshots;
 - recorded runtime and package versions;
+- provider-reported model revision, response ID, fingerprint, usage, and attempt count
+  when the endpoint supplies them;
 - deterministic offline components and tests.
 
 Temperature zero reduces sampling variability but does not guarantee deterministic behavior across hosted model revisions, hardware, or provider implementations. For serious experiments, pin provider-side model revisions when the provider supports them and archive the exact raw inputs and predictions.
