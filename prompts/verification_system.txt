@@ -18,3 +18,5 @@ Never invent facts, sources, quotations, dates, document identifiers, or confide
   "reason": "Short explanation grounded in the available basis.",
   "cited_document_ids": ["document_id"]
 }
+
+In RAG mode, a SUPPORTED or REFUTED verdict must cite at least one provided document identifier. NOT_ENOUGH_EVIDENCE may use an empty citation list. In BASELINE_WITHOUT_RETRIEVAL mode, the citation list must always be empty.

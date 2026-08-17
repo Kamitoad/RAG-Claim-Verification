@@ -4,6 +4,7 @@ import json
 
 from pydantic import ValidationError
 
+from rag_claim_verification.models.claim import VerdictLabel
 from rag_claim_verification.models.prediction import VerificationOutput
 
 
@@ -47,6 +48,12 @@ def parse_verification_output(
     cited = set(result.cited_document_ids)
     if baseline and cited:
         raise StructuredOutputError("baseline output must not cite external documents")
+    if (
+        not baseline
+        and result.label in {VerdictLabel.SUPPORTED, VerdictLabel.REFUTED}
+        and not cited
+    ):
+        raise StructuredOutputError("decisive RAG output must cite at least one document")
     unknown = sorted(cited - allowed_document_ids)
     if unknown:
         raise StructuredOutputError(

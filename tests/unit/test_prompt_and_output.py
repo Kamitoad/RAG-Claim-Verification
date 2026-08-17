@@ -87,3 +87,18 @@ def test_structured_output_rejects_unretrieved_citation() -> None:
     raw = '{"label":"SUPPORTED","reason":"x","cited_document_ids":["doc_2"]}'
     with pytest.raises(StructuredOutputError, match="not retrieved"):
         parse_verification_output(raw, allowed_document_ids={"doc_1"}, baseline=False)
+
+
+def test_structured_output_requires_citation_for_decisive_rag_label() -> None:
+    raw = '{"label":"REFUTED","reason":"Contradicted.","cited_document_ids":[]}'
+
+    with pytest.raises(StructuredOutputError, match="must cite at least one document"):
+        parse_verification_output(raw, allowed_document_ids={"doc_1"}, baseline=False)
+
+
+def test_structured_output_allows_uncited_not_enough_evidence() -> None:
+    raw = '{"label":"NOT_ENOUGH_EVIDENCE","reason":"Missing.","cited_document_ids":[]}'
+
+    result = parse_verification_output(raw, allowed_document_ids={"doc_1"}, baseline=False)
+
+    assert result.label == VerdictLabel.NOT_ENOUGH_EVIDENCE
