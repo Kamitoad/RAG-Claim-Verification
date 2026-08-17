@@ -1,4 +1,4 @@
-"""Pinned LightRAG 1.5.4 adapter using only documented public SDK APIs."""
+"""Pinned LightRAG 1.5.4 adapter isolating every version-dependent SDK interaction."""
 
 import asyncio
 import importlib
@@ -6,7 +6,7 @@ import importlib.metadata
 import logging
 import math
 import os
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from typing import Any, cast
 
 from rag_claim_verification.config import (
@@ -37,6 +37,7 @@ class LightRAGAdapter:
         self._settings = settings
         self._rag: Any = None
         self._query_param_type: Any = None
+        self._finalize_shared_data: Callable[[], None] | None = None
         self._path_to_document = self._build_path_map(documents)
 
     @property
@@ -76,11 +77,12 @@ class LightRAGAdapter:
         return os.path.normcase(value.replace("\\", "/").strip())
 
     @staticmethod
-    def _import_public_api() -> tuple[Any, Any, Any, Any, Any]:
+    def _import_sdk_api() -> tuple[Any, Any, Any, Any, Any, Any]:
         try:
             installed_version = importlib.metadata.version("lightrag-hku")
             package = importlib.import_module("lightrag")
             utils_module = importlib.import_module("lightrag.utils")
+            shared_storage_module = importlib.import_module("lightrag.kg.shared_storage")
         except (ImportError, importlib.metadata.PackageNotFoundError) as exc:
             raise ExternalDependencyError(
                 "LightRAG is not installed. Install the pinned integration with "
@@ -105,6 +107,7 @@ class LightRAGAdapter:
             openai_module.openai_complete_if_cache,
             openai_module.openai_embed,
             utils_module.wrap_embedding_func_with_attrs,
+            shared_storage_module.finalize_share_data,
         )
 
     @staticmethod
@@ -212,7 +215,14 @@ class LightRAGAdapter:
             or settings.embedding is None
         ):
             raise ValueError("Incomplete LightRAG settings")
-        light_rag, query_param, complete, openai_embed, wrap_embedding = self._import_public_api()
+        (
+            light_rag,
+            query_param,
+            complete,
+            openai_embed,
+            wrap_embedding,
+            finalize_shared_data,
+        ) = self._import_sdk_api()
         llm_config = settings.lightrag_llm
         embedding_config = settings.embedding
         llm_key = self._sdk_api_key(llm_config.api_key(required=llm_config.api_key_required))
@@ -265,30 +275,34 @@ class LightRAGAdapter:
             max_token_size=embedding_config.max_token_size,
             model_name=embedding_config.model,
         )(embedding_func)
-        rag = light_rag(
-            working_dir=str(settings.working_directory),
-            llm_model_func=llm_model_func,
-            llm_model_name=llm_config.model,
-            embedding_func=wrapped_embedding,
-            chunk_token_size=settings.chunk_token_size,
-            chunk_overlap_token_size=settings.chunk_overlap_token_size,
-            enable_llm_cache=True,
-            llm_model_max_async=settings.llm_model_max_async,
-            entity_extract_max_gleaning=settings.entity_extract_max_gleaning,
-            max_parallel_insert=settings.max_parallel_insert,
-            default_llm_timeout=max(1, round(llm_config.timeout_seconds)),
-            default_embedding_timeout=max(1, round(embedding_config.timeout_seconds)),
-        )
+        rag: Any = None
+        self._finalize_shared_data = cast(Callable[[], None], finalize_shared_data)
         try:
+            rag = light_rag(
+                working_dir=str(settings.working_directory),
+                llm_model_func=llm_model_func,
+                llm_model_name=llm_config.model,
+                embedding_func=wrapped_embedding,
+                chunk_token_size=settings.chunk_token_size,
+                chunk_overlap_token_size=settings.chunk_overlap_token_size,
+                enable_llm_cache=True,
+                llm_model_max_async=settings.llm_model_max_async,
+                entity_extract_max_gleaning=settings.entity_extract_max_gleaning,
+                max_parallel_insert=settings.max_parallel_insert,
+                default_llm_timeout=max(1, round(llm_config.timeout_seconds)),
+                default_embedding_timeout=max(1, round(embedding_config.timeout_seconds)),
+            )
             await cast(Awaitable[None], rag.initialize_storages())
         except Exception:
-            try:
-                await cast(Awaitable[None], rag.finalize_storages())
-            except Exception as cleanup_error:
-                LOGGER.warning(
-                    "LightRAG cleanup after failed initialization also failed: %s",
-                    cleanup_error,
-                )
+            if rag is not None:
+                try:
+                    await cast(Awaitable[None], rag.finalize_storages())
+                except Exception as cleanup_error:
+                    LOGGER.warning(
+                        "LightRAG cleanup after failed initialization also failed: %s",
+                        cleanup_error,
+                    )
+            self._release_shared_data()
             raise
         self._rag = rag
         self._query_param_type = query_param
@@ -356,9 +370,21 @@ class LightRAGAdapter:
         return evidence
 
     async def close(self) -> None:
-        """Finalize LightRAG storages on the same event loop used for initialization."""
+        """Finalize instance storages and LightRAG's process-global shared state."""
 
         if self._rag is not None:
             rag = self._rag
-            await cast(Awaitable[None], rag.finalize_storages())
             self._rag = None
+            self._query_param_type = None
+            try:
+                await cast(Awaitable[None], rag.finalize_storages())
+            finally:
+                self._release_shared_data()
+
+    def _release_shared_data(self) -> None:
+        """Reset LightRAG 1.5.4 globals so the next index reloads its own files."""
+
+        finalize = self._finalize_shared_data
+        self._finalize_shared_data = None
+        if finalize is not None:
+            finalize()

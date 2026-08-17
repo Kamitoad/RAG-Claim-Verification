@@ -52,6 +52,11 @@ class FailedLightRAG:
         return None
 
 
+class FailedFinalizeLightRAG:
+    async def finalize_storages(self) -> None:
+        raise RuntimeError("storage finalization failed")
+
+
 @pytest.mark.asyncio
 async def test_adapter_maps_public_chunk_path_without_inventing_score(tmp_path: Path) -> None:
     text = "Schumacher won for Benetton."
@@ -117,6 +122,38 @@ async def test_adapter_preserves_lightrag_failure_as_technical_error(tmp_path: P
     with pytest.raises(ExternalDependencyError, match="fixture retrieval failure"):
         await adapter.retrieve("claim", top_k=1)
     await adapter.close()
+
+
+@pytest.mark.asyncio
+async def test_adapter_releases_shared_data_even_if_storage_finalization_fails(
+    tmp_path: Path,
+) -> None:
+    settings = RetrieverConfig(
+        type="lightrag",
+        working_directory=tmp_path / "index",
+        lightrag_llm=OpenAICompatibleConfig(
+            base_url="http://localhost:1234/v1",
+            api_key_required=False,
+            model="fake",
+        ),
+        embedding=OpenAICompatibleEmbeddingConfig(
+            base_url="http://localhost:1234/v1",
+            api_key_required=False,
+            model="fake-embedding",
+            dimension=3,
+        ),
+    )
+    released: list[bool] = []
+    adapter = LightRAGAdapter(settings, [])
+    adapter._rag = FailedFinalizeLightRAG()
+    adapter._finalize_shared_data = lambda: released.append(True)
+
+    with pytest.raises(RuntimeError, match="storage finalization failed"):
+        await adapter.close()
+
+    assert released == [True]
+    assert adapter._rag is None
+    assert adapter._finalize_shared_data is None
 
 
 def test_fastembed_vectors_are_materialized_and_validated() -> None:
