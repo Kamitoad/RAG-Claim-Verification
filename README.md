@@ -2,7 +2,7 @@
 
 ## Project overview
 
-RAG Claim Verification is a modular research application for classifying atomic factual claims against a controlled document collection. The current domain is Michael Schumacher's Formula One career from 1991 through 2012. The implementation supports reproducible comparisons between a language-model baseline, retrieval over a clean corpus, and retrieval over the same corpus with added noise.
+RAG Claim Verification is a modular research application for classifying atomic factual claims against a controlled document collection. The current research domain is the complete 2023 Formula One season. The implementation supports reproducible comparisons between a language-model baseline, retrieval over a clean corpus, and retrieval over the same corpus with added noise.
 
 This project does **not** claim to detect fake news in general. It tests evidence-based verification inside a deliberately bounded knowledge domain.
 
@@ -40,6 +40,21 @@ The implemented MVP provides:
 - CLI workflows for validation, ingestion, single-claim verification, benchmarking, and re-evaluation;
 - classification, retrieval, reporting, and failure-analysis artifacts;
 - tests that do not call paid APIs by default.
+
+## Current local pilot
+
+The active pilot uses three 2023 race weekends, 18 balanced claims, local Ollama inference,
+FastEmbed embeddings, and Jolpica-F1 source data. Its exact source selection, transformation,
+label construction, noise definition, and interpretation limits are documented in
+[`docs/f1_2023_pilot_protocol.md`](docs/f1_2023_pilot_protocol.md).
+
+The clean LightRAG index and a derived Noisy index have been qualified locally. The Noisy index
+records the exact Clean metadata hash and preserved document hashes, then ingests only the four
+additional documents. A six-claim, three-condition gate completed all 18 cases without technical
+or structured-output errors. However, no Noise document appeared in any Noisy retrieval, and the
+baseline returned NEE for every claim. The full 54-case pilot is therefore paused pending the
+small diagnostic documented in
+[`docs/f1_2023_pilot_gate_report.md`](docs/f1_2023_pilot_gate_report.md).
 
 ## Explicit non-goals
 
@@ -117,6 +132,12 @@ Install the real LightRAG integration when ingestion or LightRAG retrieval is ne
 python -m pip install -e ".[dev,lightrag]"
 ```
 
+Install the complete local Ollama/FastEmbed pilot stack with:
+
+```bash
+python -m pip install -e ".[dev,local]"
+```
+
 The optional dependency is pinned to `lightrag-hku==1.5.4`. The adapter follows the public SDK in the [LightRAG 1.5.4 source](https://github.com/HKUDS/LightRAG/tree/v1.5.4) and its [Core programming guide](https://github.com/HKUDS/LightRAG/blob/v1.5.4/docs/ProgramingWithCore.md), specifically explicit storage initialization/finalization, `ainsert`, and structured `aquery_data` retrieval.
 
 ## Environment configuration
@@ -135,7 +156,7 @@ The main variables are:
 | `RAGCV_LLM_API_KEY` | Verification endpoint key |
 | `RAGCV_LLM_MODEL` | Verification model name |
 | `RAGCV_LIGHTRAG_LLM_*` | LightRAG extraction and query model settings |
-| `RAGCV_EMBEDDING_*` | LightRAG embedding endpoint, model, and dimension |
+| `RAGCV_EMBEDDING_*` | Optional remote LightRAG embedding endpoint, model, and dimension |
 
 Configuration stores only the API-key environment-variable name, never the key. Model endpoints are stripped of credentials, query parameters, and fragments before run metadata is written. For a local endpoint such as LM Studio, set the base URL (commonly `http://localhost:1234/v1`) and set `api_key_required: false` in the relevant YAML object if the server does not require a key.
 
@@ -148,7 +169,7 @@ The tracked files under `data/corpora/` are short, hand-written synthetic exampl
 For a real corpus, place permissible UTF-8 text files outside Git or under the ignored `data/corpora/local/` directory. Add one metadata object per line to a JSONL manifest:
 
 ```json
-{"document_id":"doc_001","title":"Example title","source":"Example source","publication_date":"2024-01-01","event_date":"1994-11-13","topic":"1994 championship","language":"en","file_path":"../corpora/local/doc_001.txt","corpus_tags":["clean","schumacher"]}
+{"document_id":"f1_2023_r01_race","title":"2023 Bahrain Grand Prix race result","source":"Permitted source","event_date":"2023-03-05","topic":"2023 Bahrain Grand Prix","language":"en","file_path":"../corpora/local/f1_2023_r01_race.txt","corpus_tags":["clean","f1-2023"]}
 ```
 
 Required fields are `document_id`, `title`, `source`, and `file_path`. Dates, topic, language, and tags are optional. `publication_date` and `event_date` are intentionally distinct.
@@ -175,7 +196,7 @@ Validation is all-or-nothing. Invalid records are never silently skipped.
 Claims use JSONL:
 
 ```json
-{"claim_id":"claim_001","claim":"Michael Schumacher won the 1994 Formula One World Championship.","gold_label":"SUPPORTED","gold_document_ids":["doc_001"],"notes":"Direct factual claim."}
+{"claim_id":"r01_winner","claim":"Max Verstappen won the 2023 Bahrain Grand Prix race.","gold_label":"SUPPORTED","gold_document_ids":["f1_2023_r01_race"],"notes":"Direct factual claim."}
 ```
 
 Benchmark records require a gold label. `gold_document_ids` is optional, but retrieval metrics can be computed only for claims that provide it. Claims should be atomic enough that a single three-way verdict is meaningful. The example file at `data/ground_truth/claims.example.jsonl` is synthetic and unsuitable for scientific evaluation.
@@ -201,7 +222,7 @@ rag-claim-verification ingest --config configs/noisy_corpus.yaml
 
 Ingestion performs complete manifest/file validation before contacting LightRAG. It passes stable document IDs and declared file paths to LightRAG, then writes `ragcv_ingestion_metadata.json` into the configured working directory. That file records the corpus ID, content-sensitive corpus hash, index-configuration hash, document IDs, content hashes, LightRAG version, timestamp, and LightRAG tracking ID. A working directory already associated with a different corpus, manifest content, index-relevant configuration, or LightRAG version is rejected instead of mixed or overwritten. A non-empty directory without RAGCV ingestion metadata is rejected as well.
 
-The clean and noisy configurations use distinct index directories under `indices/`, which is ignored by Git.
+The clean and noisy configurations use distinct index directories under `indices/`, which is ignored by Git. A corpus may declare `derived_from.corpus_config` when a controlled condition must inherit an immutable base index. In that workflow the application validates the complete base identity, copies it into a new directory, preserves the exact base-metadata hash, verifies unchanged base-document hashes, and sends only additional documents to LightRAG. A failed or pre-existing unrecognized target is never silently resumed or overwritten.
 
 ## Verifying a single claim
 
@@ -209,8 +230,8 @@ After ingesting the selected corpus:
 
 ```bash
 rag-claim-verification verify \
-  --config configs/clean_corpus.yaml \
-  --claim "Michael Schumacher won the 1994 championship."
+  --config configs/f1_2023_pilot_clean.yaml \
+  --claim "Max Verstappen won the 2023 Bahrain Grand Prix race."
 ```
 
 The command prints one structured `Prediction`, including retrieved evidence, citations, raw model output, parsing status, and timing. It does not write a benchmark run.
@@ -376,10 +397,12 @@ The tracked synthetic fixtures are deliberately short and clearly marked. They d
 - The baseline has no external evidence or source attribution. Its output reflects parametric model knowledge and is explicitly marked as such.
 - The verifier assumes pre-formulated atomic claims and does not aggregate verdicts across a full article.
 - Evidence conflict detection, temporal filtering, calibrated uncertainty, and statistical comparison tooling are not part of the MVP.
-- A real LightRAG ingestion/query was not executed by the offline test suite because it requires provider credentials and creates a provider-dependent index.
+- The local pilot has exercised real LightRAG ingestion and retrieval without paid credentials,
+  but the small local extraction model produced a graph with mixed relationship quality and did
+  not reproduce the exact same relations in an independent rebuild.
 
 ## Roadmap
 
-Potential post-MVP extensions include automatic claim extraction before the existing verifier, BM25/dense/hybrid retrievers implementing the current protocol, reranking, temporal filters, late chunking, alternative RAG adapters, additional OpenAI-compatible or native model providers, local-model profiles, a REST API and web frontend, new knowledge domains, multi-claim article aggregation, evidence-conflict detection, and statistical experiment comparison.
+Potential post-MVP extensions include BM25/dense/hybrid retrievers implementing the current protocol, reranking, temporal filters, late chunking, alternative RAG adapters, additional OpenAI-compatible or native model providers, local-model profiles, evidence-conflict detection, and statistical experiment comparison. Automatic claim extraction, a REST API, a web frontend, new knowledge domains, and whole-article aggregation remain explicit non-goals unless the project scope is changed.
 
 These are extension points, not partially implemented subsystems. A new retriever implements `Retriever`; a new model provider implements `LLMClient`; new metrics remain independent evaluation functions; future claim extraction can feed the existing `Claim` model.
