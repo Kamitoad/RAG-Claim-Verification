@@ -1,0 +1,39 @@
+experiment_name: f1_2023_local_pilot_v2
+claims_file: ../data/ground_truth/f1_2023_pilot.jsonl
+output_directory: ../runs
+
+prompts:
+  version: verification-v2-citations
+  system_path: ../prompts/verification_system.txt
+  user_path: ../prompts/verification_user.txt
+  repair_path: ../prompts/verification_repair.txt
+
+model_configs:
+  local_qwen3_4b:
+    provider: openai_compatible
+    base_url: http://127.0.0.1:11434/v1
+    api_key_env: RAGCV_LOCAL_UNUSED_API_KEY
+    api_key_required: false
+    model: ${RAGCV_LOCAL_LLM_MODEL:-ragcv-qwen3-4b-pilot:v1}
+    temperature: 0.0
+    seed: 17
+    timeout_seconds: 300
+    max_retries: 1
+    request_json_object: true
+
+conditions:
+  - id: llm_baseline
+    mode: baseline
+    model_config: local_qwen3_4b
+  - id: clean_rag
+    mode: rag
+    corpus_config: f1_2023_pilot_clean.yaml
+    model_config: local_qwen3_4b
+    top_k: 5
+  - id: noisy_rag
+    mode: rag
+    corpus_config: f1_2023_pilot_noisy.yaml
+    model_config: local_qwen3_4b
+    top_k: 5
+
+enforce_comparability: true

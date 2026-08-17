@@ -10,6 +10,7 @@ from rag_claim_verification.config import (
     FastEmbedConfig,
     RetrieverConfig,
     load_benchmark_config,
+    load_corpus_config,
 )
 
 
@@ -70,3 +71,11 @@ def test_fastembed_configuration_rejects_remote_only_fields(tmp_path: Path) -> N
     raw["embedding"]["base_url"] = "http://127.0.0.1:11434/v1"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         RetrieverConfig.model_validate(raw)
+
+
+def test_pilot_noisy_config_resolves_declared_base_config(project_root: Path) -> None:
+    config = load_corpus_config(project_root / "configs/f1_2023_pilot_noisy.yaml")
+
+    assert config.corpus_id == "f1_2023_pilot_noisy_jolpica_podium_v5"
+    assert config.derived_from is not None
+    assert config.derived_from.corpus_config == (project_root / "configs/f1_2023_pilot_clean.yaml")

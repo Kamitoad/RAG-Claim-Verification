@@ -5,6 +5,8 @@ from typing import Any
 
 import pytest
 
+from rag_claim_verification.models.claim import Claim
+from rag_claim_verification.utils.files import read_jsonl
 from scripts.prepare_f1_2023_pilot import (
     MAX_CLASSIFICATION_POSITIONS,
     PilotDataError,
@@ -114,3 +116,26 @@ def test_source_identity_mismatch_is_rejected() -> None:
 
     with pytest.raises(PilotDataError, match="Source identity mismatch"):
         validate_session_payload(_session(), payload)
+
+
+def test_gate_claims_are_an_exact_balanced_subset(project_root: Path) -> None:
+    full_path = project_root / "data/ground_truth/f1_2023_pilot.jsonl"
+    gate_path = project_root / "data/ground_truth/f1_2023_pilot_gate.jsonl"
+    full = {
+        claim.claim_id: claim
+        for _, raw in read_jsonl(full_path)
+        for claim in [Claim.model_validate(raw)]
+    }
+    gate = [Claim.model_validate(raw) for _, raw in read_jsonl(gate_path)]
+
+    assert len(gate) == 6
+    assert all(claim == full[claim.claim_id] for claim in gate)
+    assert {claim.claim_id[:3] for claim in gate} == {"r01", "r12", "r22"}
+    assert sorted(claim.gold_label.value for claim in gate) == [
+        "NOT_ENOUGH_EVIDENCE",
+        "NOT_ENOUGH_EVIDENCE",
+        "REFUTED",
+        "REFUTED",
+        "SUPPORTED",
+        "SUPPORTED",
+    ]
