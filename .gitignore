@@ -27,6 +27,10 @@ runs/*
 
 # Locally supplied corpora. Small .txt examples already tracked by Git remain usable.
 data/corpora/local/
+data/raw/local/
+data/manifests/local/
+data/ground_truth/local/
+data/provenance/local/
 data/corpora/**/*.pdf
 data/corpora/**/*.docx
 data/corpora/**/*.html

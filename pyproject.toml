@@ -50,6 +50,7 @@ addopts = "-ra --strict-config --strict-markers"
 testpaths = ["tests"]
 markers = [
     "external: requires an external API or a real LightRAG installation and index",
+    "local_data: requires ignored, provenance-checked local research data",
 ]
 
 [tool.ruff]

@@ -1,0 +1,79 @@
+schema_version: 1
+source:
+  name: Jolpica-F1 API
+  base_url: https://api.jolpi.ca/ergast/f1
+  terms_url: https://github.com/jolpica/jolpica-f1/blob/main/TERMS.md
+  license: CC BY-NC-SA 4.0
+  license_url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  intended_use: Non-commercial university research project
+sessions:
+  - source_id: bahrain_race
+    url: https://api.jolpi.ca/ergast/f1/2023/1/results/
+    season: "2023"
+    round: "1"
+    expected_race_name: Bahrain Grand Prix
+    session_type: race
+    corpus_role: clean
+    document_id: f1_2023_r01_bahrain_race_results
+    raw_file: bahrain_race.json
+    document_file: f1_2023_r01_bahrain_race_results.txt
+  - source_id: bahrain_qualifying
+    url: https://api.jolpi.ca/ergast/f1/2023/1/qualifying/
+    season: "2023"
+    round: "1"
+    expected_race_name: Bahrain Grand Prix
+    session_type: qualifying
+    corpus_role: noise
+    document_id: noise_f1_2023_r01_bahrain_qualifying_results
+    raw_file: bahrain_qualifying.json
+    document_file: noise_f1_2023_r01_bahrain_qualifying_results.txt
+  - source_id: belgium_race
+    url: https://api.jolpi.ca/ergast/f1/2023/12/results/
+    season: "2023"
+    round: "12"
+    expected_race_name: Belgian Grand Prix
+    session_type: race
+    corpus_role: clean
+    document_id: f1_2023_r12_belgium_race_results
+    raw_file: belgium_race.json
+    document_file: f1_2023_r12_belgium_race_results.txt
+  - source_id: belgium_qualifying
+    url: https://api.jolpi.ca/ergast/f1/2023/12/qualifying/
+    season: "2023"
+    round: "12"
+    expected_race_name: Belgian Grand Prix
+    session_type: qualifying
+    corpus_role: noise
+    document_id: noise_f1_2023_r12_belgium_qualifying_results
+    raw_file: belgium_qualifying.json
+    document_file: noise_f1_2023_r12_belgium_qualifying_results.txt
+  - source_id: belgium_sprint
+    url: https://api.jolpi.ca/ergast/f1/2023/12/sprint/
+    season: "2023"
+    round: "12"
+    expected_race_name: Belgian Grand Prix
+    session_type: sprint
+    corpus_role: noise
+    document_id: noise_f1_2023_r12_belgium_sprint_results
+    raw_file: belgium_sprint.json
+    document_file: noise_f1_2023_r12_belgium_sprint_results.txt
+  - source_id: abu_dhabi_race
+    url: https://api.jolpi.ca/ergast/f1/2023/22/results/
+    season: "2023"
+    round: "22"
+    expected_race_name: Abu Dhabi Grand Prix
+    session_type: race
+    corpus_role: clean
+    document_id: f1_2023_r22_abu_dhabi_race_results
+    raw_file: abu_dhabi_race.json
+    document_file: f1_2023_r22_abu_dhabi_race_results.txt
+  - source_id: abu_dhabi_qualifying
+    url: https://api.jolpi.ca/ergast/f1/2023/22/qualifying/
+    season: "2023"
+    round: "22"
+    expected_race_name: Abu Dhabi Grand Prix
+    session_type: qualifying
+    corpus_role: noise
+    document_id: noise_f1_2023_r22_abu_dhabi_qualifying_results
+    raw_file: abu_dhabi_qualifying.json
+    document_file: noise_f1_2023_r22_abu_dhabi_qualifying_results.txt
