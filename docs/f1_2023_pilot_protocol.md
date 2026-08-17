@@ -109,10 +109,10 @@ snapshot, records its exact metadata hash and document content hashes, and submi
 Noise documents to LightRAG. All seven document statuses are `processed`; the final Noisy graph
 contains 72 nodes and 24 edges.
 
-The six-claim gate completed all 18 cases without technical errors, parsing failures, or repairs.
-Clean and Noisy RAG each classified 6/6 correctly and retrieved every eligible gold document at
-rank 1. These values are descriptive only. The gate also found two blockers: the baseline emitted
-NEE for all six cases, and Noisy retrieval returned exactly the same three race documents as
-Clean without retrieving any Noise document. The unchanged 54-case pilot would therefore not
-measure actual noise exposure. See `docs/f1_2023_pilot_gate_report.md` for the complete gate
-interpretation and next diagnostic decision.
+The corrected six-claim gate completed all 18 cases without technical errors, parsing failures,
+or repairs. Clean and Noisy RAG each classified 6/6 correctly and retrieved every eligible gold
+document at rank 1. Every Noisy case also contained Noise evidence (13 Noise-document occurrences
+across 30 returned chunks). These values are descriptive only. A prior gate is superseded because
+LightRAG's process-global shared KV state caused the Noisy condition to reuse Clean chunks; the
+adapter now resets that state between indices. The remaining blocker is the baseline, which emitted
+NEE for all six cases. See `docs/f1_2023_pilot_gate_report.md` for the complete interpretation.

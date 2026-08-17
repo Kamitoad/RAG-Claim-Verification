@@ -50,10 +50,11 @@ label construction, noise definition, and interpretation limits are documented i
 
 The clean LightRAG index and a derived Noisy index have been qualified locally. The Noisy index
 records the exact Clean metadata hash and preserved document hashes, then ingests only the four
-additional documents. A six-claim, three-condition gate completed all 18 cases without technical
-or structured-output errors. However, no Noise document appeared in any Noisy retrieval, and the
-baseline returned NEE for every claim. The full 54-case pilot is therefore paused pending the
-small diagnostic documented in
+additional documents. A corrected six-claim, three-condition gate completed all 18 cases without
+technical or structured-output errors. Every Noisy case contained Noise evidence while retaining
+the correct race document at rank 1, and all Clean/Noisy verdicts were correct. The baseline still
+returned NEE for every claim, so the full 54-case pilot is paused for a focused baseline diagnostic
+documented in
 [`docs/f1_2023_pilot_gate_report.md`](docs/f1_2023_pilot_gate_report.md).
 
 ## Explicit non-goals

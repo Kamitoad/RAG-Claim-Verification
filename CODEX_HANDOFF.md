@@ -16,9 +16,11 @@ fake-news detector or an article-level system.
 
 ## Repository and environment state
 
-- Branch: `codex/f1-2023-pilot`.
+- Branch: `feature/f1-2023-pilot`.
 - Base HEAD: `b04b1e1`.
-- The pilot changes are uncommitted.
+- Seven reviewed pilot commits are recorded through the LightRAG lifecycle fix `802363e`.
+- The retrieval diagnostic, corrected gate documentation, and related tests are committed as the
+  subsequent focused diagnostic change.
 - Python 3.12.13 is installed through uv and used by the ignored `.venv-pilot` environment.
 - The older ignored `.venv` uses Python 3.14.6 and is unsuitable for FastEmbed on this machine
   because Windows Application Control blocks its `_ctypes` module.
@@ -61,6 +63,8 @@ fake-news detector or an article-level system.
 - `FastEmbedConfig` is a strict, discriminated local embedding configuration.
 - `LightRAGAdapter` loads FastEmbed lazily, validates vector shape and finite values, passes local
   model temperature/seed controls, and supports unauthenticated OpenAI-compatible endpoints.
+- The adapter finalizes both instance storages and LightRAG 1.5.4 process-global shared data, so
+  sequential Clean/Noisy adapters cannot reuse the preceding index's KV state.
 - LightRAG concurrency, gleaning, and parallel insertion are explicit hash-covered settings.
 - Benchmark metadata now records FastEmbed and OpenAI package versions.
 - Corpus configs may declare a strict `derived_from` base. Derived metadata records the exact
@@ -72,6 +76,8 @@ fake-news detector or an article-level system.
   ceiling, temperature 0, and seed 17.
 - `scripts/qualify_local_stack.py` checks Ollama, FastEmbed, real LightRAG insertion/retrieval,
   document-ID mapping, strict verdict JSON, citations, and cleanup using synthetic documents.
+- `scripts/diagnose_f1_pilot_retrieval.py` records retrieval-only query-mode and sequential-index
+  observations without invoking claim verification or inventing retrieval scores.
 
 The methodology and limitations are documented in `docs/f1_2023_pilot_protocol.md`; the first
 real gate is interpreted in `docs/f1_2023_pilot_gate_report.md`.
@@ -108,18 +114,28 @@ the four Noise documents.
   one malformed relation was rejected, relation wording leaked into entities for the sprint, and
   Abu Dhabi qualifying produced 20 entities but zero relations.
 
-Gate run `runs/20260817T092731.765244Z-70c65235` completed 18/18 planned cases in about 7.3
-minutes with zero technical errors, zero repairs, and 18 first-pass-valid outputs. Offline
+The first gate run `runs/20260817T092731.765244Z-70c65235` is superseded: LightRAG's process-global
+shared KV state caused Noisy to reuse Clean chunks after Clean closed. It remains an observed
+technical failure and must not be interpreted as a clean-versus-noisy comparison.
+
+The adapter now releases that global state after storage finalization. Retrieval-only diagnostics
+showed that `hybrid`, `naive`, and `mix` expose the same six gate claims to Noise, so there is no
+current reason to change the fixed `hybrid` mode. A same-process sequence then loaded 3 Clean
+chunks followed by 7 Noisy chunks.
+
+Corrected gate run `runs/20260817T134240.218846Z-e5205a24` completed 18/18 planned cases in about
+9.4 minutes with zero technical errors, zero repairs, and 18 first-pass-valid outputs. Offline
 re-evaluation succeeded.
 
 - Baseline: accuracy 0.3333, Macro-F1 0.1667; all six predictions were NEE.
 - Clean RAG: accuracy/Macro-F1 1.0; all four eligible gold documents ranked first.
 - Noisy RAG: accuracy/Macro-F1 1.0; all four eligible gold documents ranked first.
 - Every decisive RAG prediction cited its gold document.
-- No Noise document appeared in any Noisy evidence list; Clean and Noisy evidence were identical.
+- Every Noisy case contained Noise evidence, with 13 Noise-document occurrences across the 30
+  returned chunks.
 
-The technical gate passed. The noise-exposure and baseline-validity gates did not. These small
-descriptive values are not research findings.
+The technical and noise-exposure gates passed. Baseline validity did not. These small descriptive
+values are not research findings or evidence of general robustness.
 
 The partial ignored noisy directory
 `indices/f1_2023_pilot_noisy_jolpica_podium_v4` has no RAGCV ingestion metadata and must not be
@@ -128,17 +144,11 @@ them without user approval.
 
 ## Recommended next decision
 
-Do not run the 54-case pilot unchanged. First define and approve a small versioned diagnostic:
-
-1. query the same Clean/Noisy indices using a chunk-oriented mode such as `naive` or `mix` to see
-   whether Noise documents can enter top-k;
-2. diagnose why the current baseline instruction makes Qwen3 4B emit NEE for every claim;
-3. change query mode or prompt only if the diagnostic establishes a clear pre-declared reason;
-4. run a new six-claim gate before the full pilot.
-
-Changing query mode or prompts affects experimental comparability and therefore requires the
-user's explicit decision. Latency from the first gate must not be compared across conditions:
-condition order, warm model state, keyword caching, and identical Clean/Noisy evidence confound it.
+Keep `hybrid` fixed. Before the 54-case pilot, diagnose why the current baseline instruction makes
+Qwen3 4B emit NEE for every claim. If that establishes a reason to revise the prompt, create a new
+prompt version and run another six-claim gate before the full pilot. Latency must not be compared
+across conditions because condition order, warm state, keyword caching, and different evidence
+lengths confound it.
 
 ## Verification commands
 
@@ -158,16 +168,17 @@ installed SDK and should be enabled only in the prepared local environment.
 
 Last verified on 2026-08-17:
 
-- standard pytest: 58 passed, 2 opt-in tests skipped as designed;
-- opt-in local-data/gold audit and LightRAG integration tests: 2 passed;
+- standard pytest: 61 passed, 3 opt-in tests skipped as designed;
+- combined standard, local-data/gold, and pinned-LightRAG checks: 64 passed;
 - Ruff lint: passed;
-- Ruff format check: 66 files formatted;
-- mypy strict check: 39 source files passed;
+- Ruff format check: 69 files formatted;
+- mypy strict check: 40 source files passed;
 - `uv lock --check`: passed;
 - benchmark, gate, clean, and derived Noisy-v5 configuration validation: passed;
 - noisy-manifest clean-superset validation: 7 documents, passed;
 - derived index identity and copied base-metadata hash validation: passed;
-- gate completeness and offline re-evaluation: 18/18 cases, passed;
+- corrected gate completeness and offline re-evaluation: 18/18 cases, passed;
+- corrected Noisy retrieval: Noise evidence in 6/6 cases, gold at rank 1 in 4/4 eligible cases;
 - `git diff --check`: passed (Git reports only expected Windows line-ending warnings).
 
 ## Important constraints

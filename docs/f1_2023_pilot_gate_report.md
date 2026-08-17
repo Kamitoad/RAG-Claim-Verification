@@ -1,6 +1,7 @@
 # F1 2023 local pilot gate report
 
-- Run: `20260817T092731.765244Z-70c65235`
+- Corrected run: `20260817T134240.218846Z-e5205a24`
+- Superseded run: `20260817T092731.765244Z-70c65235`
 - Executed: 2026-08-17
 - Scope: six balanced claims across three conditions (18 planned cases)
 
@@ -15,6 +16,7 @@ complete 2023 Formula One season.
 - Every decisive RAG verdict cited a retrieved document, and every citation matched the gold
   document.
 - Offline re-evaluation reproduced the stored metrics without a retriever or model call.
+- The Noisy condition loaded its own seven chunks after the Clean condition closed.
 
 The operational gate therefore passed.
 
@@ -28,21 +30,43 @@ The operational gate therefore passed.
 
 The sample is deliberately too small for significance or generalization.
 
-## Findings that block the full pilot
+## Retrieval-noise result
+
+Every Noisy case contained at least one Noise document. Across the six cases, the five returned
+chunks contained 13 Noise-document occurrences. The correct race document nevertheless remained
+at rank 1 for all four claims with annotated gold evidence, and every verdict remained correct.
+
+This is the intended small methodology signal: the verifier was actually exposed to related
+qualifying/sprint material without losing the decisive race evidence. It is still only six cases
+and does not establish general robustness.
+
+Retrieval-only comparison of `hybrid`, `naive`, and `mix` on the same Noisy index produced the
+same Noise exposure counts and nearly identical document ordering. There is therefore no current
+evidence-based reason to change the fixed `hybrid` mode.
+
+## Superseded first run and root cause
+
+The first gate run incorrectly returned the three Clean chunks for the Noisy condition. LightRAG
+1.5.4 keeps local JSON/KV data in process-global shared state under the default empty workspace.
+Closing an instance with `finalize_storages()` did not clear this state, so opening the Noisy index
+after Clean in the same process reused Clean KV data even though the Noisy vector and graph files
+were distinct.
+
+The adapter now releases LightRAG's shared state after each complete storage finalization. A
+sequence diagnostic then loaded 3 Clean chunks followed by 7 Noisy chunks in the same process.
+The original run remains preserved as an observed technical failure but must not be interpreted as
+a clean-versus-noisy result.
+
+## Remaining blocker for the full pilot
 
 The baseline predicted `NOT_ENOUGH_EVIDENCE` for all six claims. Its two correct cases were the
 two NEE claims; it did not exercise useful parametric Formula One knowledge in this gate. This
 may be a capacity/behavior limitation of the 4B model or excessive caution induced by the
 baseline instructions. It must be diagnosed before treating the baseline as meaningful.
 
-The Noisy condition retrieved no Noise document in any of its six cases. Its ordered evidence
-lists were identical to Clean: the correct race document at rank 1, followed by the other two
-race documents. Consequently, the perfect Noisy score does not show robustness to noise; the
-current gate did not expose the verifier to noise at all.
-
 Latency is not comparable between conditions in this run. Conditions executed sequentially,
-the model was warm, LightRAG cached keyword calls, and Clean/Noisy verifier prompts contained
-identical evidence. The recorded times remain provenance, not a performance conclusion.
+the model was warm, LightRAG cached keyword calls, and Noisy prompts contained more evidence than
+Clean prompts. The recorded times remain provenance, not a performance conclusion.
 
 ## Index quality observations
 
@@ -60,8 +84,6 @@ guarantee.
 
 ## Next decision
 
-Do not run the 54-case pilot unchanged. First run a small, explicitly versioned diagnostic to
-determine whether the same indices retrieve Noise chunks under a chunk-oriented LightRAG query
-mode (`naive` or `mix`) and whether a minimally revised baseline instruction lets the local model
-use parametric knowledge without inventing citations. Any adopted query-mode or prompt change
-must be fixed before a new gate and the full pilot.
+Keep `hybrid` fixed for the pilot. Before the 54-case run, diagnose whether the current baseline
+collapse is a 4B model limitation or a consequence of the baseline instruction. Any prompt change
+would create a new prompt version and requires another six-claim gate before the full pilot.
