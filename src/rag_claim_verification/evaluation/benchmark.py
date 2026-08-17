@@ -24,6 +24,7 @@ from rag_claim_verification.config import (
 )
 from rag_claim_verification.errors import ConfigurationError
 from rag_claim_verification.evaluation.reporting import write_evaluation_artifacts
+from rag_claim_verification.ingestion.derivation import resolve_derivation
 from rag_claim_verification.ingestion.loader import load_documents
 from rag_claim_verification.ingestion.manifest import (
     compute_corpus_hash,
@@ -113,12 +114,14 @@ class DefaultComponentFactory:
         working = config.retriever.working_directory
         if working is None:
             raise ConfigurationError("LightRAG working_directory is required")
+        derivation = resolve_derivation(config)
         validate_ingested_index(
             corpus_id=config.corpus_id,
             manifest_hash=compute_corpus_hash(config.manifest_path),
             config_hash=corpus_index_config_hash(config),
             working_directory=working,
             lightrag_version=LIGHTRAG_VERSION,
+            derived_from=(derivation.provenance if derivation is not None else None),
         )
         return LightRAGAdapter(config.retriever, documents)
 
@@ -293,12 +296,14 @@ class BenchmarkRunner:
                 working = corpus.retriever.working_directory
                 if working is None:
                     raise ConfigurationError("LightRAG working_directory is required")
+                derivation = resolve_derivation(corpus)
                 validate_ingested_index(
                     corpus_id=corpus.corpus_id,
                     manifest_hash=compute_corpus_hash(corpus.manifest_path),
                     config_hash=corpus_index_config_hash(corpus),
                     working_directory=working,
                     lightrag_version=LIGHTRAG_VERSION,
+                    derived_from=(derivation.provenance if derivation is not None else None),
                 )
             working = corpus.retriever.working_directory
             if working is not None:
@@ -625,6 +630,15 @@ class BenchmarkRunner:
             atomic_write_bytes(corpus_target, condition.corpus_config.read_bytes())
             atomic_write_bytes(manifest_target, corpus.manifest_path.read_bytes())
             hashes[f"corpus_config.{condition.id}"] = sha256_file(condition.corpus_config)
+            if corpus.derived_from is not None:
+                derived_config_source = corpus.derived_from.corpus_config
+                derived_config_target = (
+                    corpus_configs_directory / f"{condition.id}.derived_from.yaml"
+                )
+                atomic_write_bytes(derived_config_target, derived_config_source.read_bytes())
+                hashes[f"corpus_config.{condition.id}.derived_from"] = sha256_file(
+                    derived_config_source
+                )
             hashes[f"manifest.{condition.id}"] = sha256_file(corpus.manifest_path)
             hashes[f"corpus_content.{condition.id}"] = compute_corpus_hash(corpus.manifest_path)
             for document in load_documents(corpus.manifest_path):

@@ -208,15 +208,33 @@ class PromptConfig(StrictModel):
     repair_path: Path
 
 
+class DerivedIndexConfig(StrictModel):
+    """Declare the validated corpus index used as an immutable derivation base."""
+
+    corpus_config: Path
+
+
 class CorpusConfig(StrictModel):
     """One curated corpus and its retriever/index configuration."""
 
     corpus_id: str = Field(min_length=1, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
     manifest_path: Path
     clean_manifest_path: Path | None = None
+    derived_from: DerivedIndexConfig | None = None
     retriever: RetrieverConfig
     verification_model: OpenAICompatibleConfig | None = None
     prompts: PromptConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_derivation(self) -> "CorpusConfig":
+        """Require an explicit clean reference for LightRAG-derived corpora."""
+
+        if self.derived_from is not None:
+            if self.retriever.type != "lightrag":
+                raise ValueError("derived_from requires retriever.type=lightrag")
+            if self.clean_manifest_path is None:
+                raise ValueError("derived_from requires clean_manifest_path")
+        return self
 
 
 class BenchmarkCondition(StrictModel):
@@ -326,6 +344,13 @@ def load_corpus_config(path: Path) -> CorpusConfig:
                 "repair_path": _resolve_path(prompts.repair_path, resolved),
             }
         )
+    derived_from = config.derived_from
+    if derived_from is not None:
+        derived_from = derived_from.model_copy(
+            update={
+                "corpus_config": _resolve_path(derived_from.corpus_config, resolved),
+            }
+        )
     return config.model_copy(
         update={
             "manifest_path": _resolve_path(config.manifest_path, resolved),
@@ -334,6 +359,7 @@ def load_corpus_config(path: Path) -> CorpusConfig:
                 if config.clean_manifest_path is not None
                 else None
             ),
+            "derived_from": derived_from,
             "retriever": retriever,
             "prompts": prompts,
         }
@@ -388,3 +414,11 @@ def corpus_index_config_hash(config: CorpusConfig) -> str:
             "retriever": retriever,
         }
     )
+
+
+def retriever_index_config_hash(config: CorpusConfig) -> str:
+    """Hash only index-producing retriever settings, excluding its storage location."""
+
+    retriever = config.retriever.model_dump(mode="json")
+    retriever.pop("working_directory", None)
+    return hash_mapping(retriever)

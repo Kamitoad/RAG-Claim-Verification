@@ -22,12 +22,16 @@ from rag_claim_verification.evaluation.benchmark import (
     load_claims,
 )
 from rag_claim_verification.evaluation.evaluate import evaluate_run
+from rag_claim_verification.ingestion.derivation import (
+    prepare_derived_working_directory,
+    resolve_derivation,
+)
 from rag_claim_verification.ingestion.loader import load_documents
 from rag_claim_verification.ingestion.manifest import (
     compute_corpus_hash,
     validate_noisy_superset,
 )
-from rag_claim_verification.ingestion.service import IngestionService
+from rag_claim_verification.ingestion.service import INGESTION_METADATA_NAME, IngestionService
 from rag_claim_verification.logging_config import configure_logging
 from rag_claim_verification.models.claim import Claim
 from rag_claim_verification.retrieval.lightrag_adapter import LightRAGAdapter
@@ -156,10 +160,21 @@ def ingest_command(
         if corpus.clean_manifest_path is not None:
             validate_noisy_superset(corpus.clean_manifest_path, corpus.manifest_path)
         documents = load_documents(corpus.manifest_path)
-        adapter = LightRAGAdapter(corpus.retriever, documents)
         working_directory = corpus.retriever.working_directory
         if working_directory is None:
             raise ValueError("LightRAG working_directory is required")
+        derivation = resolve_derivation(corpus)
+        prepared_derived_directory = False
+        if derivation is not None and not (working_directory / INGESTION_METADATA_NAME).is_file():
+            base_working = derivation.base_config.retriever.working_directory
+            if base_working is None:
+                raise ValueError("derived_from base has no LightRAG working_directory")
+            prepare_derived_working_directory(
+                base_working_directory=base_working,
+                target_working_directory=working_directory,
+            )
+            prepared_derived_directory = True
+        adapter = LightRAGAdapter(corpus.retriever, documents)
         service = IngestionService(
             corpus_id=corpus.corpus_id,
             manifest_path=corpus.manifest_path,
@@ -168,6 +183,8 @@ def ingest_command(
             working_directory=working_directory,
             lightrag_version=LIGHTRAG_VERSION,
             ingestor=adapter,
+            derived_from=(derivation.provenance if derivation is not None else None),
+            prepared_derived_directory=prepared_derived_directory,
         )
 
         async def run_ingestion() -> dict[str, Any]:
