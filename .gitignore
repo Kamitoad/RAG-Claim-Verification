@@ -8,6 +8,7 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
+.venv-pilot/
 
 # Editors and operating systems
 .idea/

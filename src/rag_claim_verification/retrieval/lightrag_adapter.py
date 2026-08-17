@@ -1,13 +1,20 @@
 """Pinned LightRAG 1.5.4 adapter using only documented public SDK APIs."""
 
+import asyncio
 import importlib
 import importlib.metadata
 import logging
+import math
 import os
 from collections.abc import Awaitable
 from typing import Any, cast
 
-from rag_claim_verification.config import LIGHTRAG_VERSION, RetrieverConfig
+from rag_claim_verification.config import (
+    LIGHTRAG_VERSION,
+    OpenAICompatibleConfig,
+    OpenAICompatibleEmbeddingConfig,
+    RetrieverConfig,
+)
 from rag_claim_verification.errors import ExternalDependencyError
 from rag_claim_verification.ingestion.loader import LoadedDocument
 from rag_claim_verification.models.document import Document
@@ -73,9 +80,8 @@ class LightRAGAdapter:
         try:
             installed_version = importlib.metadata.version("lightrag-hku")
             package = importlib.import_module("lightrag")
-            openai_module = importlib.import_module("lightrag.llm.openai")
             utils_module = importlib.import_module("lightrag.utils")
-        except ImportError as exc:
+        except (ImportError, importlib.metadata.PackageNotFoundError) as exc:
             raise ExternalDependencyError(
                 "LightRAG is not installed. Install the pinned integration with "
                 "`pip install -e '.[lightrag]'`."
@@ -84,6 +90,15 @@ class LightRAGAdapter:
             raise ExternalDependencyError(
                 f"Unsupported LightRAG version {installed_version}; expected {LIGHTRAG_VERSION}"
             )
+        try:
+            openai_module = importlib.import_module("lightrag.llm.openai")
+        except ImportError as exc:
+            missing = exc.name or "unknown module"
+            raise ExternalDependencyError(
+                "LightRAG's OpenAI-compatible adapter dependency is missing "
+                f"({missing}). Reinstall the declared local integration with "
+                "`pip install -e '.[lightrag]'`."
+            ) from exc
         return (
             package.LightRAG,
             package.QueryParam,
@@ -91,6 +106,99 @@ class LightRAGAdapter:
             openai_module.openai_embed,
             utils_module.wrap_embedding_func_with_attrs,
         )
+
+    @staticmethod
+    def _load_fastembed_model(model_name: str) -> Any:
+        """Load FastEmbed lazily so the core package remains offline-installable."""
+
+        try:
+            fastembed_module = importlib.import_module("fastembed")
+        except ImportError as exc:
+            raise ExternalDependencyError(
+                "FastEmbed is not installed. Install the local integration with "
+                "`pip install -e '.[fastembed]'`."
+            ) from exc
+        try:
+            return fastembed_module.TextEmbedding(model_name=model_name)
+        except Exception as exc:
+            raise ExternalDependencyError(
+                f"Could not initialize FastEmbed model {model_name!r}: {exc}"
+            ) from exc
+
+    @staticmethod
+    def _sdk_api_key(value: str | None) -> str:
+        """Supply the placeholder required by OpenAI's SDK for no-auth local servers."""
+
+        return value or "local-no-auth"
+
+    @staticmethod
+    def _apply_llm_defaults(
+        config: OpenAICompatibleConfig,
+        values: dict[str, Any],
+    ) -> None:
+        """Apply reproducible settings unless LightRAG explicitly overrides them."""
+
+        values.setdefault("temperature", config.temperature)
+        if config.seed is not None:
+            values.setdefault("seed", config.seed)
+
+    @staticmethod
+    def _run_fastembed(
+        model: Any,
+        texts: list[str],
+        expected_dimension: int,
+    ) -> Any:
+        """Materialize and validate local vectors at the external SDK boundary."""
+
+        try:
+            vectors = list(model.embed(texts))
+        except Exception as exc:
+            raise ExternalDependencyError(f"FastEmbed generation failed: {exc}") from exc
+        LightRAGAdapter._validate_fastembed_vectors(
+            vectors,
+            expected_rows=len(texts),
+            expected_dimension=expected_dimension,
+        )
+        try:
+            numpy_module = importlib.import_module("numpy")
+            if not texts:
+                return numpy_module.empty((0, expected_dimension), dtype=numpy_module.float32)
+            array = numpy_module.asarray(vectors, dtype=numpy_module.float32)
+        except Exception as exc:
+            raise ExternalDependencyError(
+                f"Could not materialize FastEmbed vectors: {exc}"
+            ) from exc
+        return array
+
+    @staticmethod
+    def _validate_fastembed_vectors(
+        vectors: list[Any],
+        *,
+        expected_rows: int,
+        expected_dimension: int,
+    ) -> None:
+        """Reject missing, malformed, or non-finite vectors without optional imports."""
+
+        observed_dimensions: list[int | None] = []
+        for vector in vectors:
+            try:
+                observed_dimensions.append(len(vector))
+            except TypeError:
+                observed_dimensions.append(None)
+        if len(vectors) != expected_rows or any(
+            dimension != expected_dimension for dimension in observed_dimensions
+        ):
+            raise ExternalDependencyError(
+                "FastEmbed returned an unexpected vector shape: "
+                f"rows={len(vectors)}, dimensions={observed_dimensions}; "
+                f"expected ({expected_rows}, {expected_dimension})"
+            )
+        try:
+            finite = all(math.isfinite(float(value)) for vector in vectors for value in vector)
+        except (TypeError, ValueError) as exc:
+            raise ExternalDependencyError("FastEmbed returned non-numeric vector values") from exc
+        if not finite:
+            raise ExternalDependencyError("FastEmbed returned non-finite vector values")
 
     async def initialize(self) -> None:
         """Create the SDK instance and explicitly initialize all storages."""
@@ -107,8 +215,7 @@ class LightRAGAdapter:
         light_rag, query_param, complete, openai_embed, wrap_embedding = self._import_public_api()
         llm_config = settings.lightrag_llm
         embedding_config = settings.embedding
-        llm_key = llm_config.api_key(required=llm_config.api_key_required)
-        embedding_key = embedding_config.api_key(required=embedding_config.api_key_required)
+        llm_key = self._sdk_api_key(llm_config.api_key(required=llm_config.api_key_required))
 
         async def llm_model_func(
             prompt: str,
@@ -116,7 +223,7 @@ class LightRAGAdapter:
             history_messages: list[dict[str, str]] | None = None,
             **kwargs: Any,
         ) -> str:
-            kwargs.setdefault("temperature", llm_config.temperature)
+            self._apply_llm_defaults(llm_config, kwargs)
             result = complete(
                 llm_config.model,
                 prompt,
@@ -128,14 +235,30 @@ class LightRAGAdapter:
             )
             return cast(str, await cast(Awaitable[Any], result))
 
-        async def embedding_func(texts: list[str]) -> Any:
-            result = openai_embed.func(
-                texts,
-                model=embedding_config.model,
-                api_key=embedding_key,
-                base_url=embedding_config.base_url,
+        if isinstance(embedding_config, OpenAICompatibleEmbeddingConfig):
+            embedding_key = self._sdk_api_key(
+                embedding_config.api_key(required=embedding_config.api_key_required)
             )
-            return await cast(Awaitable[Any], result)
+
+            async def embedding_func(texts: list[str]) -> Any:
+                result = openai_embed.func(
+                    texts,
+                    model=embedding_config.model,
+                    api_key=embedding_key,
+                    base_url=embedding_config.base_url,
+                )
+                return await cast(Awaitable[Any], result)
+
+        else:
+            fastembed_model = self._load_fastembed_model(embedding_config.model)
+
+            async def embedding_func(texts: list[str]) -> Any:
+                return await asyncio.to_thread(
+                    self._run_fastembed,
+                    fastembed_model,
+                    texts,
+                    embedding_config.dimension,
+                )
 
         wrapped_embedding = wrap_embedding(
             embedding_dim=embedding_config.dimension,
@@ -150,6 +273,9 @@ class LightRAGAdapter:
             chunk_token_size=settings.chunk_token_size,
             chunk_overlap_token_size=settings.chunk_overlap_token_size,
             enable_llm_cache=True,
+            llm_model_max_async=settings.llm_model_max_async,
+            entity_extract_max_gleaning=settings.entity_extract_max_gleaning,
+            max_parallel_insert=settings.max_parallel_insert,
             default_llm_timeout=max(1, round(llm_config.timeout_seconds)),
             default_embedding_timeout=max(1, round(embedding_config.timeout_seconds)),
         )

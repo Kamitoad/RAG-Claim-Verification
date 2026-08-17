@@ -5,7 +5,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rag_claim_verification.config import BenchmarkConfig, load_benchmark_config
+from rag_claim_verification.config import (
+    BenchmarkConfig,
+    FastEmbedConfig,
+    RetrieverConfig,
+    load_benchmark_config,
+)
 
 
 def test_tracked_benchmark_configuration_loads(project_root: Path) -> None:
@@ -31,3 +36,37 @@ def test_comparability_rejects_different_top_k(project_root: Path) -> None:
 
     with pytest.raises(ValidationError, match="same top_k"):
         BenchmarkConfig.model_validate(raw)
+
+
+def test_fastembed_configuration_rejects_remote_only_fields(tmp_path: Path) -> None:
+    config = RetrieverConfig.model_validate(
+        {
+            "type": "lightrag",
+            "working_directory": tmp_path / "index",
+            "llm_model_max_async": 1,
+            "entity_extract_max_gleaning": 0,
+            "max_parallel_insert": 1,
+            "lightrag_llm": {
+                "base_url": "http://127.0.0.1:11434/v1",
+                "api_key_required": False,
+                "model": "local-model",
+            },
+            "embedding": {
+                "provider": "fastembed",
+                "model": "jinaai/jina-embeddings-v2-small-en",
+                "dimension": 512,
+                "max_token_size": 8192,
+            },
+        }
+    )
+
+    assert isinstance(config.embedding, FastEmbedConfig)
+    assert config.embedding.dimension == 512
+    assert config.llm_model_max_async == 1
+    assert config.entity_extract_max_gleaning == 0
+    assert config.max_parallel_insert == 1
+
+    raw = config.model_dump(mode="python")
+    raw["embedding"]["base_url"] = "http://127.0.0.1:11434/v1"
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        RetrieverConfig.model_validate(raw)

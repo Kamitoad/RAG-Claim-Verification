@@ -18,7 +18,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-lightrag = ["lightrag-hku==1.5.4"]
+lightrag = [
+    "lightrag-hku==1.5.4",
+    "openai>=2,<3",
+]
+fastembed = ["fastembed==0.8.0"]
+local = [
+    "fastembed==0.8.0",
+    "lightrag-hku==1.5.4",
+    "openai>=2,<3",
+]
 dev = [
     "mypy>=1.14,<2",
     "pytest>=8.3,<9",

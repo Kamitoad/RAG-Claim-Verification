@@ -3,7 +3,7 @@
 import os
 import re
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv
@@ -103,7 +103,7 @@ class OpenAICompatibleConfig(StrictModel):
         return urlunsplit((parsed.scheme, host, parsed.path, "", ""))
 
 
-class EmbeddingConfig(StrictModel):
+class OpenAICompatibleEmbeddingConfig(StrictModel):
     """OpenAI-compatible embedding settings required by LightRAG."""
 
     provider: Literal["openai_compatible"] = "openai_compatible"
@@ -149,6 +149,22 @@ class EmbeddingConfig(StrictModel):
         return value or None
 
 
+class FastEmbedConfig(StrictModel):
+    """Local CPU embedding settings backed by FastEmbed."""
+
+    provider: Literal["fastembed"] = "fastembed"
+    model: str = Field(min_length=1)
+    dimension: int = Field(gt=0)
+    max_token_size: int = Field(default=8192, gt=0)
+    timeout_seconds: float = Field(default=120.0, gt=0.0)
+
+
+EmbeddingConfig = Annotated[
+    OpenAICompatibleEmbeddingConfig | FastEmbedConfig,
+    Field(discriminator="provider"),
+]
+
+
 class RetrieverConfig(StrictModel):
     """Retriever settings for either the real LightRAG adapter or deterministic tests."""
 
@@ -158,6 +174,9 @@ class RetrieverConfig(StrictModel):
     chunk_token_size: int = Field(default=1200, gt=0)
     chunk_overlap_token_size: int = Field(default=100, ge=0)
     enable_rerank: bool = False
+    llm_model_max_async: int = Field(default=4, ge=1, le=64)
+    entity_extract_max_gleaning: int = Field(default=1, ge=0, le=10)
+    max_parallel_insert: int = Field(default=3, ge=1, le=64)
     lightrag_llm: OpenAICompatibleConfig | None = None
     embedding: EmbeddingConfig | None = None
 

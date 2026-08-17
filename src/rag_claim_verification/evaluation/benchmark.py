@@ -724,6 +724,8 @@ def _package_versions() -> dict[str, str | None]:
         "typer",
         "httpx",
         "lightrag-hku",
+        "fastembed",
+        "openai",
     ]
     versions: dict[str, str | None] = {}
     for name in names:

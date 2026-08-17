@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 
 from rag_claim_verification.config import (
-    EmbeddingConfig,
     OpenAICompatibleConfig,
+    OpenAICompatibleEmbeddingConfig,
     RetrieverConfig,
 )
 from rag_claim_verification.errors import ExternalDependencyError
@@ -74,7 +74,7 @@ async def test_adapter_maps_public_chunk_path_without_inventing_score(tmp_path: 
             api_key_required=False,
             model="fake",
         ),
-        embedding=EmbeddingConfig(
+        embedding=OpenAICompatibleEmbeddingConfig(
             base_url="http://localhost:1234/v1",
             api_key_required=False,
             model="fake-embedding",
@@ -103,7 +103,7 @@ async def test_adapter_preserves_lightrag_failure_as_technical_error(tmp_path: P
             api_key_required=False,
             model="fake",
         ),
-        embedding=EmbeddingConfig(
+        embedding=OpenAICompatibleEmbeddingConfig(
             base_url="http://localhost:1234/v1",
             api_key_required=False,
             model="fake-embedding",
@@ -117,3 +117,36 @@ async def test_adapter_preserves_lightrag_failure_as_technical_error(tmp_path: P
     with pytest.raises(ExternalDependencyError, match="fixture retrieval failure"):
         await adapter.retrieve("claim", top_k=1)
     await adapter.close()
+
+
+def test_fastembed_vectors_are_materialized_and_validated() -> None:
+    LightRAGAdapter._validate_fastembed_vectors(
+        [[1.0, 2.0], [3.0, 4.0]],
+        expected_rows=2,
+        expected_dimension=2,
+    )
+
+
+def test_fastembed_rejects_wrong_dimension() -> None:
+    with pytest.raises(ExternalDependencyError, match="unexpected vector shape"):
+        LightRAGAdapter._validate_fastembed_vectors(
+            [[1.0, 2.0]],
+            expected_rows=1,
+            expected_dimension=3,
+        )
+
+
+def test_local_lightrag_defaults_include_placeholder_key_and_seed() -> None:
+    config = OpenAICompatibleConfig(
+        base_url="http://127.0.0.1:11434/v1",
+        api_key_required=False,
+        model="local-model",
+        temperature=0.0,
+        seed=17,
+    )
+    values: dict[str, Any] = {}
+
+    LightRAGAdapter._apply_llm_defaults(config, values)
+
+    assert LightRAGAdapter._sdk_api_key(None) == "local-no-auth"
+    assert values == {"temperature": 0.0, "seed": 17}
