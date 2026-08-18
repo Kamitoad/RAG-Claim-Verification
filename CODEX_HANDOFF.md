@@ -22,8 +22,8 @@ fake-news detector or an article-level system.
 - The retrieval diagnostic, corrected gate documentation, and related tests are committed as the
   subsequent focused diagnostic change.
 - Baseline prompt diagnosis is committed in `acf394f`; the approved v3 prompt experiment is
-  committed in `b4cc289`, was executed from a clean worktree, and its contract is now frozen in
-  all four pilot configurations for the final run.
+  committed in `b4cc289`, was executed from a clean worktree, and its contract was frozen in all
+  four pilot configurations before the final run.
 - Python 3.12.13 is installed through uv and used by the ignored `.venv-pilot` environment.
 - The older ignored `.venv` uses Python 3.14.6 and is unsuitable for FastEmbed on this machine
   because Windows Application Control blocks its `_ctypes` module.
@@ -86,7 +86,8 @@ fake-news detector or an article-level system.
   observations without invoking claim verification or inventing retrieval scores.
 
 The methodology and limitations are documented in `docs/f1_2023_pilot_protocol.md`; the first
-real gate is interpreted in `docs/f1_2023_pilot_gate_report.md`.
+real gate is interpreted in `docs/f1_2023_pilot_gate_report.md`, and the final result is recorded
+in `docs/f1_2023_pilot_final_report.md`.
 
 ## Real qualification results
 
@@ -148,6 +149,26 @@ The partial ignored noisy directory
 used. Older ignored experimental index directories also remain untouched; do not delete or reuse
 them without user approval.
 
+## Final 18-claim pilot result
+
+Final run `runs/20260818T161551.959752Z-248fa8fc` completed all 54 planned cases from clean commit
+`e0bc15c` in about 36.6 minutes. Offline re-evaluation reproduced its metrics.
+
+- All 54 predictions succeeded and were valid on the first response; no repair or technical error
+  occurred.
+- Baseline: accuracy 0.3333 and Macro-F1 0.1667; all 18 predictions were NEE.
+- Clean RAG: accuracy/Macro-F1 1.0; gold evidence ranked first in 12/12 eligible cases.
+- Noisy RAG: accuracy/Macro-F1 1.0; gold evidence ranked first in 11/12 eligible cases and second
+  in the remaining case, for MRR 0.9583.
+- All 24 decisive RAG predictions cited exactly their annotated gold race document; no Noise
+  document was cited.
+- All 18 Noisy cases contained Noise evidence. Noise accounted for 39/90 returned chunk
+  occurrences, including rank 1 in two cases.
+- Clean and Noisy produced identical labels on all 18 claims despite the measured retrieval noise.
+
+These are descriptive results for a small, deliberately structured three-event pilot. They do not
+establish statistical significance, general robustness, or full-season performance.
+
 ## Recommended next action
 
 The approved v3 clarification was executed once in
@@ -157,17 +178,14 @@ but still 6/6 NEE with reasons based only on absent evidence. Accuracy remained 
 assessment, so Option A did not occur and the predeclared stop rule forbids further prompt tuning or
 a model sweep.
 
-The user approved adopting the methodologically clearer v3 contract while accepting the weak 4B
-baseline as an observed limitation. The gate, full-pilot, Clean, and Noisy configurations now all
-resolve to that prompt. No new benchmark was executed during this configuration-only change.
+The final pilot is complete. Freeze this run as the project's primary empirical result and do not
+tune prompts, labels, retrieval, or the model against these observed outcomes. The next work should
+be offline: turn the protocol, final report, metrics, and representative predictions into the
+university report's method, results, and limitations sections. A broader full-season or conflicting-
+evidence experiment is optional future work and requires a new predeclared research question.
 
-The next action is one final 18-claim, three-condition pilot run (54 predictions) after explicit
-confirmation. A separate repeated six-claim gate is unnecessary because the corrected
-three-condition gate already qualified both RAG paths and the isolated v3 diagnostic qualified the
-only changed baseline instruction. Keep `hybrid`, claims, gold labels, corpora, model settings, and
-retrieval settings fixed; do not tune further after seeing the final results. Latency remains
-non-comparable across conditions because order, warm state, keyword caching, and evidence lengths
-confound it.
+Latency remains non-comparable across conditions because order, warm state, keyword caching, and
+evidence lengths confound it.
 
 ## Verification commands
 
@@ -201,6 +219,9 @@ Last verified on 2026-08-18:
 - v3 baseline diagnostic configuration and prompt contract: passed;
 - v3 baseline run completeness and offline re-evaluation: 6/6 cases, passed;
 - all four final pilot configurations resolve to the same v3 prompt contract: passed;
+- final pilot completeness and offline re-evaluation: 54/54 cases, passed;
+- final Noisy retrieval: Noise evidence in 18/18 cases, 39/90 Noise occurrences, gold at rank 1
+  in 11/12 eligible cases and rank 2 in the remaining case;
 - `git diff --check`: passed (Git reports only expected Windows line-ending warnings).
 
 ## Important constraints
@@ -212,5 +233,5 @@ Last verified on 2026-08-18:
   2023 season and not a statistically generalizable result.
 - `temperature=0` and a seed are controls and recorded provenance, not a determinism guarantee.
 - Do not present synthetic qualification results as semantic research performance.
-- Do not run paid providers, scrape additional sources, alter gold labels, or start the full
-  benchmark without the relevant user decision.
+- Do not rerun or tune against the final pilot, run paid providers, scrape additional sources,
+  alter gold labels, or start a broader experiment without the relevant user decision.

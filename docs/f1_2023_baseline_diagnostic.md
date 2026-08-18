@@ -99,3 +99,12 @@ contract, but adopting it for the controlled pilot would change the shared promp
 an explicit decision. The recommended path is to freeze v3, accept the all-NEE 4B baseline as an
 observed limitation, rerun the six-claim three-condition gate under the shared v3 prompt, and then
 proceed to the 54-case pilot if that gate remains valid.
+
+## Subsequent outcome
+
+The user approved v3 and accepted the all-NEE baseline limitation. The already corrected RAG gate
+and this isolated v3 baseline diagnostic jointly covered the only changed behavior, so a redundant
+small gate was omitted. The final 54-case pilot completed successfully; the baseline remained
+all-NEE while both RAG conditions classified 18/18 claims correctly. See
+[`f1_2023_pilot_final_report.md`](f1_2023_pilot_final_report.md) for the complete result and its
+limitations.

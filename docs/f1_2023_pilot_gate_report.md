@@ -82,7 +82,7 @@ relationship vectors/edges. The 4B extraction model nevertheless showed mixed gr
 The index is technically valid and provenance-complete, but that is not a semantic quality
 guarantee.
 
-## Next decision
+## Decision at gate completion
 
 Keep `hybrid` fixed for the pilot. The offline
 [`f1_2023_baseline_diagnostic.md`](f1_2023_baseline_diagnostic.md) review found that all six raw
@@ -93,3 +93,11 @@ evidence rationale, with no technical or structured-output errors. The stop rule
 further prompt tuning or a model sweep. The recommended next decision is to freeze the clearer v3
 contract, accept the weak 4B baseline, and run a new six-claim three-condition gate before the full
 pilot.
+
+## Subsequent outcome
+
+The user approved v3 and accepted the weak baseline. Because the corrected gate had already
+qualified both unchanged RAG paths and the isolated v3 diagnostic qualified the only changed
+baseline instruction, a repeated small gate was omitted. The final 54-case pilot then completed
+successfully from a clean worktree. Its results and limitations are recorded in
+[`f1_2023_pilot_final_report.md`](f1_2023_pilot_final_report.md).

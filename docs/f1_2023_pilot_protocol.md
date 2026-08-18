@@ -112,7 +112,14 @@ contains 72 nodes and 24 edges.
 The corrected six-claim gate completed all 18 cases without technical errors, parsing failures,
 or repairs. Clean and Noisy RAG each classified 6/6 correctly and retrieved every eligible gold
 document at rank 1. Every Noisy case also contained Noise evidence (13 Noise-document occurrences
-across 30 returned chunks). These values are descriptive only. A prior gate is superseded because
-LightRAG's process-global shared KV state caused the Noisy condition to reuse Clean chunks; the
-adapter now resets that state between indices. The remaining blocker is the baseline, which emitted
-NEE for all six cases. See `docs/f1_2023_pilot_gate_report.md` for the complete interpretation.
+across 30 returned chunks). A prior gate is superseded because LightRAG's process-global shared KV
+state caused the Noisy condition to reuse Clean chunks; the adapter now resets that state between
+indices. See `docs/f1_2023_pilot_gate_report.md` for the complete gate interpretation.
+
+After one predeclared v3 prompt clarification, the baseline still emitted NEE for all six diagnostic
+claims. That weak baseline behavior was accepted as a limitation, and further prompt or model tuning
+was stopped. The final 18-claim pilot then completed all 54 planned cases from a clean worktree:
+the baseline again predicted NEE for every claim, while Clean and Noisy RAG each classified 18/18
+correctly. All 18 Noisy cases contained Noise evidence, and one eligible gold document moved from
+rank 1 to rank 2 without changing the verdict or citation. These values remain descriptive only.
+See `docs/f1_2023_pilot_final_report.md` for the final reproducibility record and limitations.
