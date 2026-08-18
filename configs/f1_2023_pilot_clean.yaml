@@ -41,7 +41,7 @@ verification_model:
   request_json_object: true
 
 prompts:
-  version: verification-v2-citations
-  system_path: ../prompts/verification_system.txt
+  version: verification-v3-baseline-knowledge
+  system_path: ../prompts/verification_system_v3_baseline_knowledge.txt
   user_path: ../prompts/verification_user.txt
   repair_path: ../prompts/verification_repair.txt

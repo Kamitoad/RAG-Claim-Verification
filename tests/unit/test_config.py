@@ -37,6 +37,24 @@ def test_loads_baseline_prompt_diagnostic_as_one_fixed_condition(project_root: P
     assert config.conditions[0].top_k is None
 
 
+def test_pilot_configs_freeze_same_v3_prompt(project_root: Path) -> None:
+    benchmark_configs = (
+        load_benchmark_config(project_root / "configs/f1_2023_pilot_gate.yaml"),
+        load_benchmark_config(project_root / "configs/f1_2023_pilot_benchmark.yaml"),
+    )
+    corpus_configs = (
+        load_corpus_config(project_root / "configs/f1_2023_pilot_clean.yaml"),
+        load_corpus_config(project_root / "configs/f1_2023_pilot_noisy.yaml"),
+    )
+    expected_system_path = project_root / "prompts/verification_system_v3_baseline_knowledge.txt"
+
+    for config in (*benchmark_configs, *corpus_configs):
+        assert config.prompts.version == "verification-v3-baseline-knowledge"
+        assert config.prompts.system_path == expected_system_path
+        assert config.prompts.user_path == project_root / "prompts/verification_user.txt"
+        assert config.prompts.repair_path == project_root / "prompts/verification_repair.txt"
+
+
 def test_smoke_configuration_records_deterministic_model_settings(project_root: Path) -> None:
     config = load_benchmark_config(project_root / "configs/smoke_benchmark.yaml")
 

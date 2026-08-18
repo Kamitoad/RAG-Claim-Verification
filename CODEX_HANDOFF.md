@@ -22,7 +22,8 @@ fake-news detector or an article-level system.
 - The retrieval diagnostic, corrected gate documentation, and related tests are committed as the
   subsequent focused diagnostic change.
 - Baseline prompt diagnosis is committed in `acf394f`; the approved v3 prompt experiment is
-  committed in `b4cc289` and was executed from a clean worktree.
+  committed in `b4cc289`, was executed from a clean worktree, and its contract is now frozen in
+  all four pilot configurations for the final run.
 - Python 3.12.13 is installed through uv and used by the ignored `.venv-pilot` environment.
 - The older ignored `.venv` uses Python 3.14.6 and is unsuitable for FastEmbed on this machine
   because Windows Application Control blocks its `_ctypes` module.
@@ -58,9 +59,10 @@ fake-news detector or an article-level system.
   pilot document.
 - RAG `SUPPORTED` and `REFUTED` outputs must cite at least one retrieved document. Baseline
   outputs must not cite. NEE may be uncited.
-- The pilot uses prompt version `verification-v2-citations`.
-- Prompt version `verification-v3-baseline-knowledge` exists only as the tested diagnostic
-  candidate and has not yet been adopted by the gate, full-pilot, or corpus configurations.
+- The pilot now uses prompt version `verification-v3-baseline-knowledge`; the previous v2 prompt
+  remains unchanged for provenance.
+- The only material v3 clarification concerns baseline mode: missing retrieved evidence alone is
+  not a reason for NEE. The RAG citation rules and output contract remain unchanged.
 
 ### Local adapters and configuration
 
@@ -146,7 +148,7 @@ The partial ignored noisy directory
 used. Older ignored experimental index directories also remain untouched; do not delete or reuse
 them without user approval.
 
-## Recommended next decision
+## Recommended next action
 
 The approved v3 clarification was executed once in
 `runs/20260818T093758.404026Z-dad0f43b`: 6/6 first-pass-valid responses, no errors or citations,
@@ -155,12 +157,17 @@ but still 6/6 NEE with reasons based only on absent evidence. Accuracy remained 
 assessment, so Option A did not occur and the predeclared stop rule forbids further prompt tuning or
 a model sweep.
 
-The recommended next decision is to adopt the methodologically clearer v3 contract while accepting
-the weak 4B baseline as an observed limitation, then run a new six-claim three-condition gate before
-the full pilot. This adoption changes the shared prompt hash and still requires explicit user
-approval. Keep `hybrid`, claims, gold labels, corpora, model settings, and retrieval settings fixed.
-Latency remains non-comparable across conditions because order, warm state, keyword caching, and
-evidence lengths confound it.
+The user approved adopting the methodologically clearer v3 contract while accepting the weak 4B
+baseline as an observed limitation. The gate, full-pilot, Clean, and Noisy configurations now all
+resolve to that prompt. No new benchmark was executed during this configuration-only change.
+
+The next action is one final 18-claim, three-condition pilot run (54 predictions) after explicit
+confirmation. A separate repeated six-claim gate is unnecessary because the corrected
+three-condition gate already qualified both RAG paths and the isolated v3 diagnostic qualified the
+only changed baseline instruction. Keep `hybrid`, claims, gold labels, corpora, model settings, and
+retrieval settings fixed; do not tune further after seeing the final results. Latency remains
+non-comparable across conditions because order, warm state, keyword caching, and evidence lengths
+confound it.
 
 ## Verification commands
 
@@ -180,8 +187,8 @@ installed SDK and should be enabled only in the prepared local environment.
 
 Last verified on 2026-08-18:
 
-- standard pytest: 63 passed, 3 opt-in tests skipped as designed;
-- combined standard, local-data/gold, and pinned-LightRAG checks: 66 passed;
+- standard pytest: 64 passed, 3 opt-in tests skipped as designed;
+- combined standard, local-data/gold, and pinned-LightRAG checks: 67 passed;
 - Ruff lint: passed;
 - Ruff format check: 70 files formatted;
 - mypy strict check: 40 source files passed;
@@ -193,6 +200,7 @@ Last verified on 2026-08-18:
 - corrected Noisy retrieval: Noise evidence in 6/6 cases, gold at rank 1 in 4/4 eligible cases;
 - v3 baseline diagnostic configuration and prompt contract: passed;
 - v3 baseline run completeness and offline re-evaluation: 6/6 cases, passed;
+- all four final pilot configurations resolve to the same v3 prompt contract: passed;
 - `git diff --check`: passed (Git reports only expected Windows line-ending warnings).
 
 ## Important constraints

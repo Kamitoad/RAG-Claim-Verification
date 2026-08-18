@@ -3,8 +3,8 @@ claims_file: ../data/ground_truth/f1_2023_pilot.jsonl
 output_directory: ../runs
 
 prompts:
-  version: verification-v2-citations
-  system_path: ../prompts/verification_system.txt
+  version: verification-v3-baseline-knowledge
+  system_path: ../prompts/verification_system_v3_baseline_knowledge.txt
   user_path: ../prompts/verification_user.txt
   repair_path: ../prompts/verification_repair.txt
 
