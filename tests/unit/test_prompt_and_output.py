@@ -59,6 +59,31 @@ def test_prompt_builder_marks_baseline_without_evidence(project_root: Path) -> N
     assert "NO_EXTERNAL_EVIDENCE" in rendered.user
 
 
+def test_v3_baseline_prompt_makes_expected_retrieval_absence_non_decisive(
+    project_root: Path,
+) -> None:
+    builder = PromptBuilder(
+        PromptConfig(
+            version="verification-v3-baseline-knowledge",
+            system_path=(project_root / "prompts/verification_system_v3_baseline_knowledge.txt"),
+            user_path=project_root / "prompts/verification_user.txt",
+            repair_path=project_root / "prompts/verification_repair.txt",
+        )
+    )
+
+    rendered = builder.build(
+        Claim(claim_id="claim_1", claim="A claim"),
+        [],
+        baseline=True,
+        allowed_labels=tuple(VerdictLabel),
+    )
+
+    assert "absence of retrieved evidence is not by itself a reason" in rendered.system
+    assert "Evaluate the claim from model knowledge" in rendered.system
+    assert "only when that knowledge is insufficient or uncertain" in rendered.system
+    assert "NO_EXTERNAL_EVIDENCE" in rendered.user
+
+
 def test_structured_output_is_strict_and_grounded() -> None:
     result = parse_verification_output(
         '{"label":"SUPPORTED","reason":"Confirmed.","cited_document_ids":["doc_1"]}',

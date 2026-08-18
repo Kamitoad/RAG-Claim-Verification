@@ -22,6 +22,21 @@ def test_tracked_benchmark_configuration_loads(project_root: Path) -> None:
     assert config.prompts.repair_path == project_root / "prompts/verification_repair.txt"
 
 
+def test_loads_baseline_prompt_diagnostic_as_one_fixed_condition(project_root: Path) -> None:
+    config = load_benchmark_config(project_root / "configs/f1_2023_pilot_baseline_diagnostic.yaml")
+
+    assert config.prompts.version == "verification-v3-baseline-knowledge"
+    assert config.prompts.system_path == (
+        project_root / "prompts/verification_system_v3_baseline_knowledge.txt"
+    )
+    assert config.claims_file == project_root / "data/ground_truth/f1_2023_pilot_gate.jsonl"
+    assert len(config.conditions) == 1
+    assert config.conditions[0].id == "llm_baseline_v3"
+    assert config.conditions[0].mode == "baseline"
+    assert config.conditions[0].corpus_config is None
+    assert config.conditions[0].top_k is None
+
+
 def test_smoke_configuration_records_deterministic_model_settings(project_root: Path) -> None:
     config = load_benchmark_config(project_root / "configs/smoke_benchmark.yaml")
 
