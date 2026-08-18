@@ -87,6 +87,9 @@ guarantee.
 Keep `hybrid` fixed for the pilot. The offline
 [`f1_2023_baseline_diagnostic.md`](f1_2023_baseline_diagnostic.md) review found that all six raw
 reasons used the expected absence of external evidence as sufficient justification for NEE and
-never attempted a model-knowledge assessment. It proposes one minimal versioned clarification,
-subject to user approval, followed by six baseline cases. Any adopted prompt change requires a new
-six-claim three-condition gate before the full pilot.
+never attempted a model-knowledge assessment. Its one approved v3 clarification was then tested
+once on the same six baseline cases. All six predictions remained NEE for the same absence-of-
+evidence rationale, with no technical or structured-output errors. The stop rule therefore rejects
+further prompt tuning or a model sweep. The recommended next decision is to freeze the clearer v3
+contract, accept the weak 4B baseline, and run a new six-claim three-condition gate before the full
+pilot.

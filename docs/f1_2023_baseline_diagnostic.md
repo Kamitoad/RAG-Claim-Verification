@@ -1,8 +1,9 @@
 # F1 2023 pilot baseline diagnostic
 
 - Source run: `runs/20260817T134240.218846Z-e5205a24`
+- Executed v3 run: `runs/20260818T093758.404026Z-dad0f43b`
 - Diagnostic date: 2026-08-18
-- Scope: six persisted baseline predictions; no new model, retrieval, or provider calls
+- Scope: six persisted v2 predictions followed by one predeclared six-case local v3 run
 - Model: `ragcv-qwen3-4b-pilot:v1`
 - Prompt version: `verification-v2-citations`
 
@@ -41,7 +42,7 @@ This is a diagnostic inference from six cases, not a general model-capability re
 gold cases also cannot establish appropriate abstention while the same rationale is used for every
 label category.
 
-## Minimal proposed test
+## Predeclared minimal test
 
 Change exactly one experimental variable: create prompt version
 `verification-v3-baseline-knowledge` with an explicit baseline clarification:
@@ -67,5 +68,34 @@ JSON, and empty baseline citation lists.
   not continue prompt tuning or start a model sweep.
 - Only after a valid gate should the 18-claim, three-condition pilot be run.
 
-Changing the prompt affects experimental comparability and requires explicit user approval before
-implementation or model execution.
+Because the prompt affects experimental comparability, this test required and received explicit
+user approval before implementation and model execution.
+
+## Executed v3 result
+
+The approved test ran once from clean Git commit `b4cc289` and completed all six planned cases in
+51.7 seconds. Run metadata records `git_dirty: false`, prompt version
+`verification-v3-baseline-knowledge`, and system-prompt hash
+`32ef0e89423b4e3e49c2361d79800111830ee4ec6fde7f5ea61b6c73e2c230fb`. Offline re-evaluation
+reproduced the persisted metrics.
+
+- Six of six predictions were valid on the first response, with no repair or technical error.
+- All citation lists were correctly empty.
+- All six predictions remained `NOT_ENOUGH_EVIDENCE`.
+- Accuracy remained 0.3333 and Macro-F1 remained 0.1667.
+- Every reason again used only the absence of evidence, for example: `No evidence is provided to
+  support or refute the claim.`
+- No response attempted a model-knowledge assessment, including the winner and podium claims.
+
+The clarification therefore did not produce Option A. The first diagnostic correctly identified
+the observable shortcut, but a one-line explicit prohibition was insufficient to change this 4B
+model's behavior. This still does not prove that the underlying model lacks the facts; it shows
+that this controlled baseline interface did not elicit them under either prompt version.
+
+## Applied stop rule
+
+Do not create another prompt variant or start a model sweep. The v3 wording is the clearer baseline
+contract, but adopting it for the controlled pilot would change the shared prompt hash and requires
+an explicit decision. The recommended path is to freeze v3, accept the all-NEE 4B baseline as an
+observed limitation, rerun the six-claim three-condition gate under the shared v3 prompt, and then
+proceed to the 54-case pilot if that gate remains valid.

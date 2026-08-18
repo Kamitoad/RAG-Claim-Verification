@@ -21,6 +21,8 @@ fake-news detector or an article-level system.
 - Seven reviewed pilot commits are recorded through the LightRAG lifecycle fix `802363e`.
 - The retrieval diagnostic, corrected gate documentation, and related tests are committed as the
   subsequent focused diagnostic change.
+- Baseline prompt diagnosis is committed in `acf394f`; the approved v3 prompt experiment is
+  committed in `b4cc289` and was executed from a clean worktree.
 - Python 3.12.13 is installed through uv and used by the ignored `.venv-pilot` environment.
 - The older ignored `.venv` uses Python 3.14.6 and is unsuitable for FastEmbed on this machine
   because Windows Application Control blocks its `_ctypes` module.
@@ -57,6 +59,8 @@ fake-news detector or an article-level system.
 - RAG `SUPPORTED` and `REFUTED` outputs must cite at least one retrieved document. Baseline
   outputs must not cite. NEE may be uncited.
 - The pilot uses prompt version `verification-v2-citations`.
+- Prompt version `verification-v3-baseline-knowledge` exists only as the tested diagnostic
+  candidate and has not yet been adopted by the gate, full-pilot, or corpus configurations.
 
 ### Local adapters and configuration
 
@@ -144,17 +148,19 @@ them without user approval.
 
 ## Recommended next decision
 
-The offline review in `docs/f1_2023_baseline_diagnostic.md` is complete. All six baseline reasons
-treated the expected absence of external evidence as sufficient for NEE and never attempted the
-prompt's model-knowledge instruction. The supported diagnosis is a prompt-conditioned shortcut;
-the run cannot yet establish whether the 4B model knows the facts.
+The approved v3 clarification was executed once in
+`runs/20260818T093758.404026Z-dad0f43b`: 6/6 first-pass-valid responses, no errors or citations,
+but still 6/6 NEE with reasons based only on absent evidence. Accuracy remained 0.3333 and Macro-F1
+0.1667. Offline re-evaluation succeeded. The clarification did not produce a model-knowledge
+assessment, so Option A did not occur and the predeclared stop rule forbids further prompt tuning or
+a model sweep.
 
-Subject to explicit user approval, change only the versioned baseline clarification and run the
-same six baseline cases once. If the model then attempts factual assessment, freeze the prompt and
-rerun the three-condition gate. If it remains NEE because of expressed factual uncertainty, accept
-the weak baseline without further prompt tuning or a model sweep. Keep `hybrid`, claims, gold
-labels, corpora, model settings, and retrieval settings fixed. Latency remains non-comparable across
-conditions because order, warm state, keyword caching, and evidence lengths confound it.
+The recommended next decision is to adopt the methodologically clearer v3 contract while accepting
+the weak 4B baseline as an observed limitation, then run a new six-claim three-condition gate before
+the full pilot. This adoption changes the shared prompt hash and still requires explicit user
+approval. Keep `hybrid`, claims, gold labels, corpora, model settings, and retrieval settings fixed.
+Latency remains non-comparable across conditions because order, warm state, keyword caching, and
+evidence lengths confound it.
 
 ## Verification commands
 
@@ -172,12 +178,12 @@ uv lock --check
 The standard suite must remain network-free. The opt-in external LightRAG test checks the pinned
 installed SDK and should be enabled only in the prepared local environment.
 
-Last verified on 2026-08-17:
+Last verified on 2026-08-18:
 
-- standard pytest: 61 passed, 3 opt-in tests skipped as designed;
-- combined standard, local-data/gold, and pinned-LightRAG checks: 64 passed;
+- standard pytest: 63 passed, 3 opt-in tests skipped as designed;
+- combined standard, local-data/gold, and pinned-LightRAG checks: 66 passed;
 - Ruff lint: passed;
-- Ruff format check: 69 files formatted;
+- Ruff format check: 70 files formatted;
 - mypy strict check: 40 source files passed;
 - `uv lock --check`: passed;
 - benchmark, gate, clean, and derived Noisy-v5 configuration validation: passed;
@@ -185,6 +191,8 @@ Last verified on 2026-08-17:
 - derived index identity and copied base-metadata hash validation: passed;
 - corrected gate completeness and offline re-evaluation: 18/18 cases, passed;
 - corrected Noisy retrieval: Noise evidence in 6/6 cases, gold at rank 1 in 4/4 eligible cases;
+- v3 baseline diagnostic configuration and prompt contract: passed;
+- v3 baseline run completeness and offline re-evaluation: 6/6 cases, passed;
 - `git diff --check`: passed (Git reports only expected Windows line-ending warnings).
 
 ## Important constraints
