@@ -1,6 +1,6 @@
 # CODEX Handoff
 
-Last updated: 2026-08-17
+Last updated: 2026-08-18
 
 ## Current objective
 
@@ -16,7 +16,7 @@ fake-news detector or an article-level system.
 
 ## Repository and environment state
 
-- Branch: `feature/f1-2023-pilot`.
+- Branch: `feature/f1-2023-baseline-diagnostic`.
 - Base HEAD: `b04b1e1`.
 - Seven reviewed pilot commits are recorded through the LightRAG lifecycle fix `802363e`.
 - The retrieval diagnostic, corrected gate documentation, and related tests are committed as the
@@ -144,11 +144,17 @@ them without user approval.
 
 ## Recommended next decision
 
-Keep `hybrid` fixed. Before the 54-case pilot, diagnose why the current baseline instruction makes
-Qwen3 4B emit NEE for every claim. If that establishes a reason to revise the prompt, create a new
-prompt version and run another six-claim gate before the full pilot. Latency must not be compared
-across conditions because condition order, warm state, keyword caching, and different evidence
-lengths confound it.
+The offline review in `docs/f1_2023_baseline_diagnostic.md` is complete. All six baseline reasons
+treated the expected absence of external evidence as sufficient for NEE and never attempted the
+prompt's model-knowledge instruction. The supported diagnosis is a prompt-conditioned shortcut;
+the run cannot yet establish whether the 4B model knows the facts.
+
+Subject to explicit user approval, change only the versioned baseline clarification and run the
+same six baseline cases once. If the model then attempts factual assessment, freeze the prompt and
+rerun the three-condition gate. If it remains NEE because of expressed factual uncertainty, accept
+the weak baseline without further prompt tuning or a model sweep. Keep `hybrid`, claims, gold
+labels, corpora, model settings, and retrieval settings fixed. Latency remains non-comparable across
+conditions because order, warm state, keyword caching, and evidence lengths confound it.
 
 ## Verification commands
 

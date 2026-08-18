@@ -84,6 +84,9 @@ guarantee.
 
 ## Next decision
 
-Keep `hybrid` fixed for the pilot. Before the 54-case run, diagnose whether the current baseline
-collapse is a 4B model limitation or a consequence of the baseline instruction. Any prompt change
-would create a new prompt version and requires another six-claim gate before the full pilot.
+Keep `hybrid` fixed for the pilot. The offline
+[`f1_2023_baseline_diagnostic.md`](f1_2023_baseline_diagnostic.md) review found that all six raw
+reasons used the expected absence of external evidence as sufficient justification for NEE and
+never attempted a model-knowledge assessment. It proposes one minimal versioned clarification,
+subject to user approval, followed by six baseline cases. Any adopted prompt change requires a new
+six-claim three-condition gate before the full pilot.
