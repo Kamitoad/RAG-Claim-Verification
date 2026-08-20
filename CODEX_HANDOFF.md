@@ -87,7 +87,9 @@ fake-news detector or an article-level system.
 
 The methodology and limitations are documented in `docs/f1_2023_pilot_protocol.md`; the first
 real gate is interpreted in `docs/f1_2023_pilot_gate_report.md`, and the final result is recorded
-in `docs/f1_2023_pilot_final_report.md`.
+in `docs/f1_2023_pilot_final_report.md`. Partner and assessor handoff, including the distinction
+between viewing an archived run and performing a new experiment, is documented in
+`docs/f1_2023_pilot_reproduction.md`.
 
 ## Real qualification results
 
@@ -178,11 +180,12 @@ but still 6/6 NEE with reasons based only on absent evidence. Accuracy remained 
 assessment, so Option A did not occur and the predeclared stop rule forbids further prompt tuning or
 a model sweep.
 
-The final pilot is complete. Freeze this run as the project's primary empirical result and do not
-tune prompts, labels, retrieval, or the model against these observed outcomes. The next work should
-be offline: turn the protocol, final report, metrics, and representative predictions into the
-university report's method, results, and limitations sections. A broader full-season or conflicting-
-evidence experiment is optional future work and requires a new predeclared research question.
+The final pilot is complete and its partner/assessor reproduction paths are documented. Freeze
+this run as the project's primary empirical result and do not tune prompts, labels, retrieval, or
+the model against these observed outcomes. Remaining work is editorial: adapt the protocol and
+final report to the university's required structure and citation style and, if needed, turn the
+result tables into presentation material. A broader full-season or conflicting-evidence
+experiment is optional future work and requires a new predeclared research question.
 
 Latency remains non-comparable across conditions because order, warm state, keyword caching, and
 evidence lengths confound it.
@@ -203,7 +206,7 @@ uv lock --check
 The standard suite must remain network-free. The opt-in external LightRAG test checks the pinned
 installed SDK and should be enabled only in the prepared local environment.
 
-Last verified on 2026-08-18:
+Technical results last verified on 2026-08-18:
 
 - standard pytest: 64 passed, 3 opt-in tests skipped as designed;
 - combined standard, local-data/gold, and pinned-LightRAG checks: 67 passed;
@@ -221,8 +224,11 @@ Last verified on 2026-08-18:
 - all four final pilot configurations resolve to the same v3 prompt contract: passed;
 - final pilot completeness and offline re-evaluation: 54/54 cases, passed;
 - final Noisy retrieval: Noise evidence in 18/18 cases, 39/90 Noise occurrences, gold at rank 1
-  in 11/12 eligible cases and rank 2 in the remaining case;
-- `git diff --check`: passed (Git reports only expected Windows line-ending warnings).
+  in 11/12 eligible cases and rank 2 in the remaining case.
+
+Documentation reviewed on 2026-08-20: the README final-pilot status and the separate
+partner/assessor reproduction paths are synchronized; `git diff --check` passes with only the
+expected Windows line-ending warnings.
 
 ## Important constraints
 

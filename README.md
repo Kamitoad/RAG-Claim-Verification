@@ -50,12 +50,30 @@ label construction, noise definition, and interpretation limits are documented i
 
 The clean LightRAG index and a derived Noisy index have been qualified locally. The Noisy index
 records the exact Clean metadata hash and preserved document hashes, then ingests only the four
-additional documents. A corrected six-claim, three-condition gate completed all 18 cases without
-technical or structured-output errors. Every Noisy case contained Noise evidence while retaining
-the correct race document at rank 1, and all Clean/Noisy verdicts were correct. The baseline still
-returned NEE for every claim, so the full 54-case pilot is paused for a focused baseline diagnostic
-documented in
-[`docs/f1_2023_pilot_gate_report.md`](docs/f1_2023_pilot_gate_report.md).
+additional documents. The final 18-claim, three-condition pilot completed all 54 planned cases
+without technical or structured-output errors. Clean and Noisy RAG each classified 18/18 claims
+correctly. Every Noisy case contained Noise evidence; 39 of 90 returned chunks came from Noise
+documents, while no Noise document was cited. The baseline returned NEE for all 18 claims and is
+therefore retained as a documented weak comparator.
+
+The reproducibility record and cautious interpretation are documented in
+[`docs/f1_2023_pilot_final_report.md`](docs/f1_2023_pilot_final_report.md).
+
+## Reproducing the F1 pilot
+
+Generated research data, LightRAG indexes, and run directories are intentionally ignored by Git.
+The pilot can therefore be audited in two different ways:
+
+1. Use a separately supplied archive of the final run to inspect its existing predictions,
+   metrics, and reports. Running `evaluate` is optional and only verifies the stored hashes and
+   regenerates the derived metrics without calling Ollama, LightRAG, or FastEmbed.
+2. Rebuild the local Jolpica corpus and LightRAG indexes, then execute a new 54-case benchmark.
+   This requires the documented external downloads and can produce a new, not necessarily
+   byte-identical run.
+
+The exact Windows/PowerShell commands, required artifacts, data-directory roles, integrity checks,
+and reproducibility limits are in
+[`docs/f1_2023_pilot_reproduction.md`](docs/f1_2023_pilot_reproduction.md).
 
 ## Explicit non-goals
 
