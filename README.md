@@ -59,6 +59,13 @@ therefore retained as a documented weak comparator.
 The reproducibility record and cautious interpretation are documented in
 [`docs/f1_2023_pilot_final_report.md`](docs/f1_2023_pilot_final_report.md).
 
+A separate three-claim multi-document diagnostic then reused an isolated copy of the Clean index.
+LightRAG retrieved all three jointly required race documents by rank 3 and the verifier cited all
+three, but the local 4B model returned the wrong label for both decisive aggregate claims. The NEE
+aggregation remained correct. This exploratory result is not pooled with the final pilot and is
+documented in
+[`docs/f1_2023_multidoc_diagnostic_report.md`](docs/f1_2023_multidoc_diagnostic_report.md).
+
 ## Reproducing the F1 pilot
 
 Generated research data, LightRAG indexes, and run directories are intentionally ignored by Git.
@@ -415,6 +422,9 @@ The tracked synthetic fixtures are deliberately short and clearly marked. They d
 - The in-memory retriever ranks whole documents by query-token coverage. It exists for deterministic testing, not as a scientific substitute for LightRAG.
 - The baseline has no external evidence or source attribution. Its output reflects parametric model knowledge and is explicitly marked as such.
 - The verifier assumes pre-formulated atomic claims and does not aggregate verdicts across a full article.
+- A three-case diagnostic retrieved complete evidence for short multi-document aggregations, but
+  the local 4B verifier misclassified both decisive aggregate claims, including one schema-valid
+  label that contradicted its own explanation.
 - Evidence conflict detection, temporal filtering, calibrated uncertainty, and statistical comparison tooling are not part of the MVP.
 - The local pilot has exercised real LightRAG ingestion and retrieval without paid credentials,
   but the small local extraction model produced a graph with mixed relationship quality and did
