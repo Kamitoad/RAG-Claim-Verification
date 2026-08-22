@@ -1,0 +1,40 @@
+experiment_name: synthetic_evaluation_smoke
+claims_file: ../data/ground_truth/claims.example.jsonl
+output_directory: ../runs
+
+prompts:
+  version: verification-v1
+  system_path: ../prompts/verification_system.txt
+  user_path: ../prompts/verification_user.txt
+  repair_path: ../prompts/verification_repair.txt
+
+model_configs:
+  deterministic_smoke:
+    provider: openai_compatible
+    base_url: ${RAGCV_SMOKE_BASE_URL:-http://127.0.0.1:8765/v1}
+    api_key_required: false
+    model: ragcv-deterministic-smoke-v1
+    temperature: 0.0
+    seed: 17
+    timeout_seconds: 10
+    max_retries: 0
+    request_json_object: true
+
+conditions:
+  - id: llm_baseline
+    mode: baseline
+    model_config: deterministic_smoke
+
+  - id: clean_rag
+    mode: rag
+    corpus_config: smoke_clean_corpus.yaml
+    model_config: deterministic_smoke
+    top_k: 5
+
+  - id: noisy_rag
+    mode: rag
+    corpus_config: smoke_noisy_corpus.yaml
+    model_config: deterministic_smoke
+    top_k: 5
+
+enforce_comparability: true

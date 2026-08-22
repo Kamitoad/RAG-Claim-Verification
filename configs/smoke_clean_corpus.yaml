@@ -1,0 +1,5 @@
+corpus_id: synthetic_smoke_clean
+manifest_path: ../data/manifests/clean_documents.jsonl
+
+retriever:
+  type: in_memory

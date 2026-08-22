@@ -1,0 +1,46 @@
+corpus_id: schumacher_noisy
+manifest_path: ../data/manifests/noisy_documents.jsonl
+clean_manifest_path: ../data/manifests/clean_documents.jsonl
+
+retriever:
+  type: lightrag
+  working_directory: ../indices/schumacher_noisy
+  query_mode: hybrid
+  chunk_token_size: 1200
+  chunk_overlap_token_size: 100
+  enable_rerank: false
+  lightrag_llm:
+    provider: openai_compatible
+    base_url: ${RAGCV_LIGHTRAG_LLM_BASE_URL:-https://api.openai.com/v1}
+    api_key_env: RAGCV_LIGHTRAG_LLM_API_KEY
+    api_key_required: true
+    model: ${RAGCV_LIGHTRAG_LLM_MODEL:-gpt-4o-mini}
+    temperature: 0.0
+    timeout_seconds: 120
+    max_retries: 2
+  embedding:
+    provider: openai_compatible
+    base_url: ${RAGCV_EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+    api_key_env: RAGCV_EMBEDDING_API_KEY
+    api_key_required: true
+    model: ${RAGCV_EMBEDDING_MODEL:-text-embedding-3-small}
+    dimension: ${RAGCV_EMBEDDING_DIMENSION:-1536}
+    max_token_size: 8192
+    timeout_seconds: 120
+
+verification_model:
+  provider: openai_compatible
+  base_url: ${RAGCV_LLM_BASE_URL:-https://api.openai.com/v1}
+  api_key_env: RAGCV_LLM_API_KEY
+  api_key_required: true
+  model: ${RAGCV_LLM_MODEL:-gpt-4o-mini}
+  temperature: 0.0
+  timeout_seconds: 60
+  max_retries: 2
+  request_json_object: true
+
+prompts:
+  version: verification-v1
+  system_path: ../prompts/verification_system.txt
+  user_path: ../prompts/verification_user.txt
+  repair_path: ../prompts/verification_repair.txt
