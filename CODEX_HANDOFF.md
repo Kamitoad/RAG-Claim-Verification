@@ -171,6 +171,27 @@ Final run `runs/20260818T161551.959752Z-248fa8fc` completed all 54 planned cases
 These are descriptive results for a small, deliberately structured three-event pilot. They do not
 establish statistical significance, general robustness, or full-season performance.
 
+## Multi-document diagnostic result
+
+The predeclared three-claim Clean-RAG diagnostic completed once in
+`runs/20260822T101241.115926Z-38c9872d`. It used an exact, separately queried copy of the validated
+Clean-v4 index so new query caches did not alter the final pilot index.
+
+- All 3 predictions succeeded and were first-pass valid; offline re-evaluation reproduced the
+  metrics.
+- All three race documents were retrieved for every claim. For the two decisive claims, Evidence
+  Recall@3/@5 was 1.0 and both outputs cited all three jointly required documents.
+- The supported three-win claim was incorrectly labeled `REFUTED`; its reason misread Abu Dhabi
+  despite the retrieved document recording Max Verstappen at position 1.
+- The refuted exactly-two-win claim was incorrectly labeled `SUPPORTED` even though its own reason
+  correctly concluded that the claim was false and refuted.
+- The absent pit-stop aggregation was correctly labeled NEE without citations.
+- Accuracy and Macro-F1 were both 0.3333. Retrieval coverage was complete; aggregate evidence
+  interpretation and label/reason consistency were the observed limitations.
+
+The diagnostic is reported in `docs/f1_2023_multidoc_diagnostic_report.md`. Do not tune or rerun
+these observed claims as a replacement result, and do not pool them with the final pilot.
+
 ## Recommended next action
 
 The approved v3 clarification was executed once in
@@ -180,12 +201,13 @@ but still 6/6 NEE with reasons based only on absent evidence. Accuracy remained 
 assessment, so Option A did not occur and the predeclared stop rule forbids further prompt tuning or
 a model sweep.
 
-The final pilot is complete and its partner/assessor reproduction paths are documented. Freeze
-this run as the project's primary empirical result and do not tune prompts, labels, retrieval, or
-the model against these observed outcomes. Remaining work is editorial: adapt the protocol and
-final report to the university's required structure and citation style and, if needed, turn the
-result tables into presentation material. A broader full-season or conflicting-evidence
-experiment is optional future work and requires a new predeclared research question.
+The final pilot remains the project's primary empirical result, and the multi-document diagnostic
+is now a separate recorded limitation. Freeze both observed claim sets and do not tune prompts,
+labels, retrieval, or the model against their outcomes. Remaining work is primarily editorial:
+adapt the protocol and reports to the university's required structure and citation style. A small
+long-document/chunk-boundary diagnostic is optional future work and requires its own predeclared
+protocol, claims, isolated index, and run; a broader full-season or conflicting-evidence experiment
+is out of scope without a new research question.
 
 Latency remains non-comparable across conditions because order, warm state, keyword caching, and
 evidence lengths confound it.
@@ -229,6 +251,17 @@ Technical results last verified on 2026-08-18:
 Documentation reviewed on 2026-08-20: the README final-pilot status and the separate
 partner/assessor reproduction paths are synchronized; `git diff --check` passes with only the
 expected Windows line-ending warnings.
+
+Multi-document diagnostic and quality gate verified on 2026-08-22:
+
+- diagnostic corpus and benchmark configurations: valid;
+- isolated index before querying: 13/13 files byte-identical to Clean-v4, passed;
+- diagnostic completeness and offline re-evaluation: 3/3 cases, passed;
+- diagnostic retrieval: all three race documents returned in all three cases, passed;
+- standard pytest: 64 passed, 3 opt-in tests skipped as designed;
+- Ruff lint and format check: passed, 75 files formatted;
+- mypy strict check: 40 source files passed;
+- `uv lock --check`: passed.
 
 ## Important constraints
 
