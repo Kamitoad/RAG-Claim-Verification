@@ -192,6 +192,29 @@ Clean-v4 index so new query caches did not alter the final pilot index.
 The diagnostic is reported in `docs/f1_2023_multidoc_diagnostic_report.md`. Do not tune or rerun
 these observed claims as a replacement result, and do not pool them with the final pilot.
 
+## Long-document diagnostic result
+
+The predeclared four-claim synthetic Clean-RAG diagnostic completed once in
+`runs/20260822T181104.020270Z-4db7a834` from definition commit `43d87fb`. One 3,841-token dossier
+produced three fixed windows containing the opening target, overlapping boundary target, and
+later-only ending target exactly as predeclared.
+
+- All 4 predictions succeeded and were valid on the first model response; offline re-evaluation
+  reproduced the metrics. The first model request needed its one configured provider retry.
+- All three decisive target passages were actually available: opening at rank 2, overlap at ranks
+  2 and 3, and ending at rank 1. All three decisive outputs cited the dossier; NEE used no citation.
+- The supported opening Bahrain claim was incorrectly labeled `REFUTED`. Its reason invented a
+  later correction and conflict that do not exist in the retrieved dossier.
+- The overlap Belgium claim, later Abu Dhabi refutation, and absent pit-stop duration were correct.
+- Accuracy was 0.75 and Macro-F1 was 0.7778. Positional retrieval passed; evidence interpretation
+  remained the observed limitation.
+- Document Evidence Recall@1 was 1.0 but is not sufficient here because every returned chunk maps
+  to the same document ID; the predeclared target-passage audit is the meaningful retrieval check.
+
+The diagnostic is reported in `docs/f1_2023_long_document_diagnostic_report.md`. Do not tune or
+rerun these observed claims as a replacement result, and do not pool them with either earlier
+experiment.
+
 ## Recommended next action
 
 The approved v3 clarification was executed once in
@@ -201,13 +224,13 @@ but still 6/6 NEE with reasons based only on absent evidence. Accuracy remained 
 assessment, so Option A did not occur and the predeclared stop rule forbids further prompt tuning or
 a model sweep.
 
-The final pilot remains the project's primary empirical result, and the multi-document diagnostic
-is now a separate recorded limitation. Freeze both observed claim sets and do not tune prompts,
-labels, retrieval, or the model against their outcomes. Remaining work is primarily editorial:
-adapt the protocol and reports to the university's required structure and citation style. A small
-long-document/chunk-boundary diagnostic is optional future work and requires its own predeclared
-protocol, claims, isolated index, and run; a broader full-season or conflicting-evidence experiment
-is out of scope without a new research question.
+The final pilot remains the project's primary empirical result. The multi-document and synthetic
+long-document diagnostics are separate recorded limitations and must not be pooled with it. Freeze
+all three observed claim sets and do not tune prompts, labels, retrieval, chunking, or the model
+against their outcomes. Remaining work is editorial: synthesize the method, results, direct
+evidence audits, and limitations in the university report and adapt citations and presentation to
+the required format. A broader full-season, real-article, conflicting-evidence, or combined
+multi-long-document experiment is out of scope without a new research question.
 
 Latency remains non-comparable across conditions because order, warm state, keyword caching, and
 evidence lengths confound it.
@@ -262,6 +285,21 @@ Multi-document diagnostic and quality gate verified on 2026-08-22:
 - Ruff lint and format check: passed, 75 files formatted;
 - mypy strict check: 40 source files passed;
 - `uv lock --check`: passed.
+
+Long-document diagnostic verified on 2026-08-22:
+
+- tracked definition committed before ingestion and query as `43d87fb`, passed;
+- synthetic corpus and benchmark configurations: valid;
+- stored chunk topology and target distribution: 3 chunks with `AB`, `B`, `C`, passed;
+- diagnostic completeness and offline re-evaluation: 4/4 cases, passed;
+- exact target-passage retrieval: opening rank 2, overlap ranks 2/3, ending rank 1, passed;
+- classification: 3/4 correct, Accuracy 0.75, Macro-F1 0.7778;
+- citations: 3/3 decisive cases cited the dossier; NEE used no citation;
+- post-query index isolation: 12/13 files byte-identical; only the query cache changed, passed.
+- standard pytest: 64 passed, 3 opt-in tests skipped as designed;
+- Ruff lint and format check: passed, 77 files formatted;
+- mypy strict check: 40 source files passed;
+- `uv lock --check` and `git diff --check`: passed.
 
 ## Important constraints
 

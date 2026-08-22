@@ -1,6 +1,9 @@
 # Data layout and preparation
 
-All files currently tracked under `data/corpora/` are short, hand-written synthetic fixtures. They exist only for tests and CLI demonstrations. Their labels and later model outputs are not scientific results and must not be used as an evaluation dataset.
+All files currently tracked under `data/corpora/` are hand-written synthetic fixtures. Most are
+short examples for tests and CLI demonstrations; any longer architecture diagnostic is explicitly
+marked in its text, manifest, and protocol. Their labels and later model outputs are not scientific
+results and must not be used as an evaluation dataset.
 
 ## Local research documents
 

@@ -66,6 +66,13 @@ aggregation remained correct. This exploratory result is not pooled with the fin
 documented in
 [`docs/f1_2023_multidoc_diagnostic_report.md`](docs/f1_2023_multidoc_diagnostic_report.md).
 
+A second separate diagnostic used one tracked 3,841-token synthetic dossier split into three
+LightRAG windows. The exact opening, overlap, and ending target passages were all retrieved within
+the first two evidence ranks. Three of four labels were correct; the local 4B verifier invented a
+conflict for the supported opening claim despite receiving its decisive sentence. This result is
+also kept separate and is documented in
+[`docs/f1_2023_long_document_diagnostic_report.md`](docs/f1_2023_long_document_diagnostic_report.md).
+
 ## Reproducing the F1 pilot
 
 Generated research data, LightRAG indexes, and run directories are intentionally ignored by Git.
@@ -412,7 +419,9 @@ Tests marked `external` are skipped by default. After installing the LightRAG ex
 
 Do not commit copyrighted article full text merely because it is publicly reachable. Keep local documents under an ignored path or outside the repository and maintain independent provenance, licensing, acquisition-date, and transformation records. A manifest records technical metadata; it does not establish redistribution rights.
 
-The tracked synthetic fixtures are deliberately short and clearly marked. They demonstrate mechanics only and must not be presented as measured research performance.
+The tracked synthetic fixtures are clearly marked. They demonstrate mechanics only and must not be
+presented as measured research performance; the longer controlled dossier is an architecture
+diagnostic rather than a representative article corpus.
 
 ## Known limitations
 
@@ -425,6 +434,12 @@ The tracked synthetic fixtures are deliberately short and clearly marked. They d
 - A three-case diagnostic retrieved complete evidence for short multi-document aggregations, but
   the local 4B verifier misclassified both decisive aggregate claims, including one schema-valid
   label that contradicted its own explanation.
+- A four-case synthetic long-document diagnostic retrieved the exact target passages from the
+  opening, overlapping boundary, and ending windows, but the local verifier still misclassified
+  one supported claim despite receiving its decisive sentence.
+- Document-level retrieval metrics can overstate long-document success when multiple chunks share
+  one document ID; the long-document diagnostic therefore audits the persisted target passage
+  directly.
 - Evidence conflict detection, temporal filtering, calibrated uncertainty, and statistical comparison tooling are not part of the MVP.
 - The local pilot has exercised real LightRAG ingestion and retrieval without paid credentials,
   but the small local extraction model produced a graph with mixed relationship quality and did

@@ -1,0 +1,377 @@
+F1 2023 controlled long-document diagnostic dossier
+
+Synthetic-use notice
+
+This document is a hand-written diagnostic fixture for the RAG Claim Verification project. It is
+not a news article, race report, or independent research source. The deliberately repetitive
+archive commentary exists only to make the document longer than the configured LightRAG chunk
+window. Only the three explicitly marked controlled classification statements provide Formula One
+results. The surrounding text contains no pit-stop durations, pit-stop counts, fastest-lap times,
+championship totals, or additional finishing positions.
+
+CONTROLLED CLASSIFICATION STATEMENT A — OPENING POSITION
+
+The controlled classification states that Max Verstappen won the 2023 Bahrain Grand Prix. Sergio
+Perez placed second and Fernando Alonso placed third. This statement is intentionally located near
+the beginning of the synthetic dossier so retrieval from the opening chunk can be inspected.
+
+Archive context 01
+
+The diagnostic archive describes how a long record can remain readable without adding further
+competitive results. Each context section uses neutral language about organization, review, and
+document handling. A reader can distinguish a source statement from surrounding commentary
+because every source statement has an explicit heading. The commentary does not silently extend a
+classification and does not imply that an omitted statistic is known. Its sole function is to
+create controlled distance between the opening, boundary, and ending evidence passages.
+
+Archive context 02
+
+Long documents often combine headings, explanatory prose, editorial notes, and repeated reminders
+about scope. This fixture mirrors that shape while keeping its factual contract deliberately small.
+The archive keeper checks that each paragraph is stored in order, that section names remain stable,
+and that later reviewers can locate a passage without relying on page layout. No table is hidden in
+this section, no numerical measurement is encoded in the wording, and no sporting conclusion
+should be inferred from the sequence of the paragraphs.
+
+Archive context 03
+
+The material between controlled statements is intentionally mundane. It discusses cataloguing,
+indexing, quality review, and the difference between the presence of a document and the presence of
+decisive evidence. A retrieval system may identify the dossier as generally relevant, but the test
+still asks whether the returned evidence contains the particular sentence needed by a claim. This
+distinction matters when every chunk maps back to the same stable document identifier.
+
+Archive context 04
+
+An archivist receiving this dossier would record the title, synthetic source, language, and stable
+identifier before ingestion. The archivist would not attach an unstated race result or estimate a
+missing value. If a later question asks for information absent from the controlled statements, the
+correct closed-corpus conclusion is that the dossier does not provide enough evidence. The present
+paragraph therefore establishes procedure rather than Formula One history.
+
+Archive context 05
+
+The project treats raw retrieval output and model interpretation as separate observations. A chunk
+can be available while a verifier still assigns an incorrect label, and a correct label can occur
+without the decisive chunk being retrieved. For that reason the diagnostic will inspect actual
+evidence text in addition to document identifiers. This neutral explanation adds length but does
+not answer any of the benchmark claims by itself.
+
+Archive context 06
+
+Consistent ordering allows the fixture to expose positional effects. The beginning is reached
+without crossing a chunk boundary, the middle lies near an overlapping window, and the ending
+requires retrieval from a later window. Those locations are properties of this controlled file,
+not claims about how every long article behaves. The diagnostic is too small for statistical or
+general reliability conclusions and is not intended to support either kind of statement.
+
+Archive context 07
+
+Every stored experiment should identify its exact inputs. A reproducibility record can include the
+document hash, manifest hash, resolved configuration, prompt version, model identifier, package
+versions, and raw predictions. These details make two runs comparable without pretending that a
+local language model is perfectly deterministic. The archive commentary records that principle but
+contains no hidden answer about a driver, team, circuit, time, or season total.
+
+Archive context 08
+
+The context is written in English because the existing pilot prompts and source documents use
+English. Language consistency reduces an unrelated variable in this narrow test. It does not mean
+that multilingual retrieval is impossible or that translation quality has been evaluated. Such
+questions would require separate protocols, separate inputs, and separate interpretations rather
+than being folded into this one controlled diagnostic.
+
+Archive context 09
+
+A long file can create several ways to overstate success. Returning any passage from the correct
+file is not sufficient if the decisive sentence is elsewhere. Citing the correct document is also
+not sufficient if the explanation contradicts its evidence. The planned report will therefore
+separate chunk availability, citation behavior, structured label correctness, and agreement between
+the label and the written reason. This paragraph defines no new automatic metric.
+
+Archive context 10
+
+The fixture avoids newspaper prose, quotations, and copied narrative. Its content can therefore be
+tracked with the source code without redistributing a third party's article. That design improves
+repository portability for a partner or assessor, although it reduces ecological validity. A
+successful result would show feasibility only under a controlled synthetic input, while a failure
+would identify a limitation worth reporting rather than a defect that must be tuned away.
+
+Archive context 11
+
+During ingestion, LightRAG divides the document according to the fixed token window configured by
+the project. Overlap is intended to preserve local context around a boundary, but it does not
+guarantee that a later query will rank the relevant window highly. The diagnostic keeps the current
+settings unchanged so that the observed result describes the existing system rather than a newly
+optimized variant. No alternate chunk size is tried after results are visible.
+
+Archive context 12
+
+The sections also avoid aggregate wording. Each decisive benchmark claim will concern one atomic
+classification statement at one position. This prevents a long-document retrieval question from
+becoming another multi-document or multi-fact reasoning question. If the relevant passage is
+returned and the verdict is still wrong, the report can attribute the observed limitation to
+interpretation rather than to missing evidence, subject to the small scope of the test.
+
+Archive context 13
+
+The archive reviewer checks section boundaries before the protocol is frozen. This is a design-time
+calibration using the same tokenizer as the installed LightRAG version, not a query and not a model
+evaluation. After the fixture, claims, and protocol are committed, their content will not be moved
+to improve the observed outcome. If the final index differs from the expected chunk structure, that
+difference will be recorded instead of repaired after the benchmark.
+
+Archive context 14
+
+Neutral prose continues until the first fixed-token boundary is nearby. Repetition here is
+deliberate and documented, because the experiment needs physical distance without introducing many
+new entities that could distort graph extraction. The wording focuses on process and evidence
+discipline. It neither confirms nor denies any claim about the selected race whose controlled
+classification appears in the following marked section.
+
+Boundary preparation A
+
+The calibration notes describe only document structure. They explain that a token boundary is a
+property of the configured tokenizer rather than a visible page or paragraph break. A sentence can
+therefore begin near the end of one fixed window while remaining available in the next window
+through overlap. This explanation contains no result that can decide a benchmark label.
+
+Boundary preparation B
+
+The project records the intended position before retrieval begins. That record prevents a later
+editor from moving the evidence to a more favorable location after seeing the ranking. Position is
+treated as an experimental input, just like the claim order, model profile, prompt version, and
+retrieval parameters. Nothing in this paragraph identifies a race winner.
+
+Boundary preparation C
+
+The next marked classification is the only evidence-bearing passage in this area. Nearby context
+uses generic terms so a returned window can be checked for the precise decisive sentence. If the
+query returns surrounding process commentary without that sentence, the direct chunk-content audit
+will record the target passage as missing even though the document identifier is correct.
+
+CONTROLLED CLASSIFICATION STATEMENT B — BOUNDARY POSITION
+
+The controlled classification states that Max Verstappen won the 2023 Belgian Grand Prix. Sergio
+Perez placed second and Charles Leclerc placed third. This statement is intentionally positioned
+near the first fixed-token boundary, where the configured overlap should preserve its local text in
+an adjacent window.
+
+Archive context 15
+
+After the boundary statement, the dossier resumes neutral archival discussion. A chunking system
+may include part of the preceding section because the windows overlap. That duplication is an
+expected property of the configuration and should not be interpreted as two independent sources.
+Both windows still belong to one document with one stable identifier. Evaluation must therefore
+look at the returned passage rather than count duplicate windows as corroboration.
+
+Archive context 16
+
+The controlled test uses a fresh index directory. This isolates document state, vector data, graph
+data, and language-model cache entries from every earlier pilot or diagnostic. Isolation prevents a
+query in the new experiment from altering the archived state of an old index. The generated index
+is an experimental artifact and remains outside version control, while the tracked fixture and
+configuration describe how it can be rebuilt.
+
+Archive context 17
+
+Validation takes place before ingestion. The manifest must resolve the text file, the document
+identifier must be unique, and all strict configuration fields must be accepted. A malformed input
+should stop the operation before local provider calls or index writes begin. This behavior protects
+the interpretation of an experiment because a partial corpus would no longer represent the
+predeclared test.
+
+Archive context 18
+
+The benchmark uses one Clean-RAG condition only. Adding a baseline would answer a different
+question about parametric model knowledge, while adding noise would reintroduce the variable from
+the completed pilot. Neither comparison is needed to determine whether a later chunk from one long
+document can be retrieved. Keeping one condition also limits local runtime and avoids unnecessary
+model invocations.
+
+Archive context 19
+
+The verifier receives retrieved evidence through the existing project boundary. LightRAG-specific
+objects are converted into the project's validated evidence representation before prompt assembly.
+The benchmark then stores the model response, parsed label, cited document identifiers, evidence,
+latency, and observable error state. This architecture allows offline evaluation without repeating
+the retrieval or model calls.
+
+Archive context 20
+
+One absent-information claim is retained to test the closed-corpus contract. Absence does not mean
+that the real-world value is unknowable; it means that this exact controlled dossier does not state
+it. The verifier should not use outside knowledge, estimate a plausible number, or cite a context
+paragraph that lacks the requested measurement. The fixture deliberately avoids the relevant unit
+and value throughout its text.
+
+Archive context 21
+
+The diagnostic also distinguishes formal validity from semantic correctness. A response can satisfy
+the JSON schema while assigning a label that contradicts its own explanation. The previous
+multi-document test observed such a case. Here the existing parser remains unchanged, because
+adding a new semantic validator would alter the architecture under observation and expand the task
+beyond the predeclared retrieval question.
+
+Archive context 22
+
+No confidence score is requested. The system cannot derive a calibrated probability from one local
+generation, and inventing a decimal would add apparent precision without measurement. The stored
+label, explanation, citations, evidence, and failure state are sufficient for the narrow analysis.
+Any uncertainty discussion in the final report should remain qualitative and tied to observable
+behavior.
+
+Archive context 23
+
+The test uses the same local model profile and prompt as the completed pilot. This controls two
+important variables but does not guarantee identical generation across machines or versions.
+Runtime metadata and dependency resolution remain part of reproducibility. A partner can create a
+new observation from the tracked inputs, while an archived run preserves the original observation
+for offline inspection.
+
+Archive context 24
+
+The expected outcome is not assumed. The opening passage may be easier to retrieve, the overlapping
+passage may appear in more than one chunk, and the ending passage may still rank well because of
+semantic similarity. These are possibilities rather than predictions. The one-run stop rule
+prevents the test author from choosing whichever repetition happens to look most favorable after
+the fact.
+
+Archive context 25
+
+Document length alone does not establish a useful long-document test. The file must actually exceed
+the configured token window, generate multiple stored chunks, and place target statements in
+different windows. The preparation checks those structural facts. It does not inspect retrieval
+rankings or model answers before the benchmark. Structural qualification and outcome evaluation
+remain separate stages.
+
+Archive context 26
+
+When evidence is reviewed, the exact decisive sentence will be sought in the returned chunk text.
+A broad topical match to Formula One is not enough. If the correct document identifier is returned
+without the target passage, document-level Evidence Recall will be reported as insufficient for
+this single-document setting. This direct audit is predeclared instead of being invented after an
+unexpected result.
+
+Archive context 27
+
+The final report will avoid pooling these cases with the 54 predictions from the controlled pilot
+or the three claims from the multi-document diagnostic. Different questions, corpora, and claim
+sets make a combined accuracy number misleading. Each result remains a small descriptive
+observation. Together they describe exercised boundaries of the implementation without becoming a
+statistical generalization.
+
+Archive context 28
+
+No optimization follows a failed result. The test will not increase top-k, alter overlap, reorder
+the document, rewrite a claim, or switch models after seeing predictions. A later study could
+compare chunking strategies with a new protocol and fresh claims, but that is outside the present
+university-project scope. The current task values a clear limitation more than a tuned demonstration.
+
+Late-document context A
+
+A later token window must carry its own useful evidence rather than depend on the opening passage.
+This condition is simple in a fixed-window fixture but still worth checking in the stored index.
+The preparation stage can count chunks and locate controlled statements without asking a retrieval
+question. Query rankings remain unobserved until the single benchmark execution.
+
+Late-document context B
+
+The context deliberately avoids synonyms for podium placement that might accidentally act as a
+second statement of the ending result. It also avoids quoting the future claim. The marked ending
+classification therefore remains the sole passage that can directly support or refute that case.
+Generic references to evidence and labels are methodological commentary only.
+
+Late-document context C
+
+An assessor reviewing the tracked fixture can repeat the same token count with the installed
+LightRAG tokenizer. Small implementation changes in a future dependency version could alter the
+boundary, which is why the resolved package version belongs in the run metadata. The present test
+describes the locked environment rather than every possible tokenizer revision.
+
+Late-document context D
+
+The single-document design also keeps path-to-document mapping unambiguous. Every returned evidence
+window should resolve to the stable identifier in the manifest. That property helps isolate the
+content-position question, although it means document-level retrieval metrics cannot distinguish
+the correct window from an irrelevant window. The predeclared text audit supplies that distinction.
+
+Late-document context E
+
+No statement in this late context supplies a duration, count, or performance measurement. The
+absence case must be judged against the complete dossier, not against one retrieved paragraph. If
+the model claims a precise missing value, that behavior will be reported as unsupported rather than
+silently converted to a valid insufficient-evidence answer.
+
+Archive context 29
+
+The ending statement is deliberately separated from the beginning by enough neutral material to
+require a later token window. Its claim will be phrased as a contradiction of the stored
+classification, allowing the existing three-label contract to exercise a refuted case without
+introducing a second source. The decisive evidence remains a directly stated finishing order rather
+than an inference from unrelated prose.
+
+Archive context 30
+
+Before reaching that statement, the dossier repeats its central restriction: archive commentary is
+not race evidence. Headings make the three usable classifications visible, but retrieval must still
+select the relevant text for each query. A human reader should be able to reproduce the expected
+label by consulting only the target statement and the claim, without external browsing or domain
+expertise.
+
+Ending preparation A
+
+The final evidence passage is placed beyond the end of the second 1,800-token window. It should
+therefore occur only in the third fixed window under the frozen tokenizer and overlap settings.
+This positional statement is verified before the protocol is committed and will not be adjusted in
+response to a retrieval rank or generated verdict.
+
+Ending preparation B
+
+The third window is not treated as a separate document. It retains the same source path and stable
+document identifier as every preceding window. The diagnostic asks whether retrieval exposes the
+late decisive text, while citation continues to refer to the dossier as a whole. These two levels
+must remain distinct in the interpretation.
+
+Ending preparation C
+
+Only the explicitly marked classification below records a finishing order in this part of the file.
+The preparation prose contains no driver ranking and cannot decide whether a claim naming a winner
+is supported or refuted. This keeps the expected evidence phrase exact and makes a direct audit of
+retrieved text possible.
+
+CONTROLLED CLASSIFICATION STATEMENT C — ENDING POSITION
+
+The controlled classification states that Max Verstappen won the 2023 Abu Dhabi Grand Prix.
+Charles Leclerc placed second and George Russell placed third. This statement is intentionally
+located near the end of the synthetic dossier so retrieval from a later chunk can be inspected.
+
+Closing context 31
+
+The archive closes without adding another classification. Any question about a measurement or
+season statistic not present in the three marked statements remains unsupported by this file. The
+closing text does not summarize the winners because duplicating them here would destroy the
+position test. It only confirms that the controlled evidence region has ended.
+
+Closing context 32
+
+This fixture should be interpreted alongside its manifest, claim file, configuration, and
+predeclared protocol. Its synthetic construction improves control and redistribution, while its
+artificial style limits realism. Both properties must be stated when the result is discussed. The
+document provides an architectural diagnostic, not a benchmark of news reporting or arbitrary
+long-form language.
+
+Closing context 33
+
+The final window contains enough neutral material to remain a meaningful stored chunk rather than
+an isolated sentence. None of that material repeats the decisive classification. Retrieval can
+therefore be checked for the presence of the target sentence without treating repeated evidence as
+independent support.
+
+Closing context 34
+
+All experimental conclusions remain conditional on this one synthetic dossier, four atomic claims,
+one local model profile, and one execution. The fixture establishes a controlled boundary case and
+nothing more. Broader long-form corpora would require a separate data and evaluation design.
+
+End of controlled long-document diagnostic dossier.
