@@ -77,6 +77,20 @@ class LightRAGAdapter:
         return os.path.normcase(value.replace("\\", "/").strip())
 
     @staticmethod
+    def _normalize_response_format(value: Any) -> Any:
+        """Adapt LightRAG's JSON-object hint to provider-supported text mode.
+
+        Some OpenAI-compatible servers reject ``json_object`` and only accept
+        plain text or JSON schema responses. LightRAG still uses
+        ``json_object`` for keyword extraction, but its downstream parser can
+        handle JSON returned as ordinary text, so we safely downgrade here.
+        """
+
+        if isinstance(value, dict) and value.get("type") == "json_object":
+            return {"type": "text"}
+        return value
+
+    @staticmethod
     def _import_sdk_api() -> tuple[Any, Any, Any, Any, Any, Any]:
         try:
             installed_version = importlib.metadata.version("lightrag-hku")
@@ -234,6 +248,9 @@ class LightRAGAdapter:
             **kwargs: Any,
         ) -> str:
             self._apply_llm_defaults(llm_config, kwargs)
+            # Normalize provider response format hints for OpenAI-compatible servers (e.g. LM Studio)
+            if "response_format" in kwargs:
+                kwargs["response_format"] = self._normalize_response_format(kwargs["response_format"])
             result = complete(
                 llm_config.model,
                 prompt,

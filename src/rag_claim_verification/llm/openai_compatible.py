@@ -46,7 +46,12 @@ class OpenAICompatibleClient:
             "stream": False,
         }
         if self._config.request_json_object:
-            payload["response_format"] = {"type": "json_object"}
+            # Many local OpenAI-compatible servers (LM Studio, etc.) reject
+            # the legacy 'json_object' and may require a full json_schema.
+            # LightRAG and the RAGCV verifier can accept JSON encoded as
+            # ordinary text, so prefer the conservative 'text' hint to avoid
+            # provider 400 errors while preserving downstream parsing.
+            payload["response_format"] = {"type": "text"}
         if self._config.seed is not None:
             payload["seed"] = self._config.seed
 
